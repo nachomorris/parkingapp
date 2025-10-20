@@ -1,6 +1,6 @@
 {
-  "name": "Gestor de Estacionamiento",
-  "short_name": "Estacionamiento",
+  "name": "My Parking",
+  "short_name": "PARKING",
   "description": "App para gestionar vehículos estacionados",
   "start_url": "/",
   "display": "standalone",
