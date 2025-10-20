@@ -1,486 +1,23 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    import { initializeApp } from "firebase/app";
-import { getDatabase } from "firebase/database";
-
-// Tu objeto de configuración de Firebase.
-// Asegúrate de reemplazar con tu configuración real.
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "parking-c5830",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  // La URL de tu base de datos Realtime es importante aquí.
-  databaseURL: "https://parking-c5830-default-rtdb.firebaseio.com",
-};
-
-// Inicializa Firebase con tu configuración
-const app = initializeApp(firebaseConfig);
-
-// Inicializa Realtime Database y obtén una referencia al servicio
-const database = getDatabase(app);
-
-// ¡Listo! Ahora puedes empezar a usar la variable `database` para interactuar con tu Realtime Database.
-
-    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Asegura responsividad -->
-    <title>PARKING</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Estacionamiento</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Roboto', sans-serif;
-            transition: all 0.3s ease;
-        }
-        body {
-            background: #f5f5f5;
-            color: #333;
-            min-height: 100vh;
-            padding: 10px; /* Menos padding en móviles */
-            position: relative;
-        }
-        body.dark-mode {
-            background: #3a3f44;
-            color: #ffffff;
-        }
-        .theme-config {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px; /* Menos gap en móviles */
-            z-index: 1000;
-            border-radius: 8px;
-        }
-        .config-link {
-            padding: 6px 10px;
-            background: #ffffff;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            text-decoration: none;
-            color: #333;
-            font-size: 12px; /* Tamaño reducido para móviles */
-            cursor: pointer;
-        }
-        .config-link.dark-mode {
-            background: #2b2e33;
-            border-color: #555;
-            color: #ffffff;
-        }
-        .config-link:hover {
-            background: #f0f0f0;
-        }
-        .config-link.dark-mode:hover {
-            background: #3a3f44;
-        }
-        .theme-toggle {
-            width: 36px; /* Menos ancho en móviles */
-            height: 36px;
-            font-size: 20px; /* Icono más pequeño */
-            background: transparent;
-            border: 1px solid #ccc;
-            border-radius: 50%;
-            cursor: pointer;
-            color: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .theme-toggle.dark-mode {
-            border-color: #555;
-            color: #ffffff;
-        }
-        .theme-toggle:hover {
-            background: #ddd;
-        }
-        .theme-toggle.dark-mode:hover {
-            background: #444;
-        }
-        .container {
-            display: flex;
-            max-width: 1000px;
-            margin: 0 auto;
-            background: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            position: relative;
-            z-index: 1;
-        }
-        .container.dark-mode {
-            background: #2b2e33;
-            border-color: #555;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-        }
-        .form-section {
-            width: 40%;
-            padding: 15px; /* Menos padding en móviles */
-            background: #f9f9f9;
-            border-radius: 8px 0 0 8px;
-        }
-        .form-section.dark-mode {
-            background: #3a3f44;
-        }
-        .list-section {
-            width: 60%;
-            padding: 15px; /* Menos padding en móviles */
-            background: #ffffff;
-            border-radius: 0 8px 8px 0;
-        }
-        .list-section.dark-mode {
-            background: #2b2e33;
-        }
-        h2 {
-            color: #333;
-            margin: 0 0 10px 0;
-            font-size: 1.3em; /* Reducido para móviles */
-            text-transform: uppercase;
-        }
-        .dark-mode h2 {
-            color: #ffffff;
-        }
-        .ingreso {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .ingreso input#placa {
-            font-size: 1.1em; /* Reducido para móviles */
-            padding: 10px; /* Menos padding */
-        }
-        .ingreso .vehicle-buttons {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 8px; /* Menos margen en móviles */
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #fff;
-            color: #333;
-            font-size: 14px;
-        }
-        .dark-mode input {
-            border-color: #555;
-            background: #3a3f44;
-            color: #ffffff;
-        }
-        input:focus {
-            outline: none;
-            border-color: #4a90e2;
-            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
-        }
-        .dark-mode input:focus {
-            border-color: #7f8c8d;
-            box-shadow: 0 0 5px rgba(127, 140, 141, 0.5);
-        }
-        button {
-            width: 100%;
-            padding: 12px; /* Menos padding en móviles */
-            background: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.2em; /* Reducido para móviles */
-        }
-        button:hover {
-            background: #357abd;
-        }
-        .vehicle-btn {
-            flex: 1;
-            padding: 8px; /* Menos padding en móviles */
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 20px; /* Icono más pequeño */
-            text-align: center;
-            background: transparent;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            margin: 0 4px; /* Menos margen en móviles */
-        }
-        .dark-mode .vehicle-btn {
-            border-color: #555;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-        .vehicle-btn.active {
-            border: 3px solid #4a90e2;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .dark-mode .vehicle-btn.active {
-            border-color: #7f8c8d;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
-        .vehicle-btn:hover {
-            border-color: #95a5a6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-        }
-        .dark-mode .vehicle-btn:hover {
-            border-color: #95a5a6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-        }
-        .delete-btn {
-            width: auto;
-            padding: 6px 12px; /* Menos padding en móviles */
-            background: #e74c3c;
-            border-radius: 8px;
-            font-size: 16px; /* Reducido para móviles */
-            align-self: center;
-            text-transform: uppercase;
-        }
-        .delete-btn:hover {
-            background: #c0392b;
-        }
-        .clear-filter-btn {
-            width: 100%;
-            padding: 8px;
-            background: #e67e22;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px; /* Reducido para móviles */
-            display: none;
-        }
-        .clear-filter-btn:hover {
-            background: #d35400;
-        }
-        .clear-filter-btn.active {
-            display: block;
-        }
-        ul {
-            list-style: none;
-        }
-        li {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px; /* Menos padding en móviles */
-            margin-bottom: 8px; /* Menos margen en móviles */
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-            border-left: 4px solid #4a90e2;
-            border-radius: 8px;
-            align-items: center;
-        }
-        .dark-mode li {
-            background: #3a3f44;
-            border-color: #555;
-            border-left-color: #7f8c8d;
-        }
-        .in-parking {
-            border-left-color: #4a90e2;
-        }
-        .dark-mode .in-parking {
-            border-left-color: #7f8c8d;
-        }
-        .used {
-            border-left-color: #f1c40f;
-        }
-        .dark-mode .used {
-            border-left-color: #f39c12;
-        }
-        .plate {
-            font-size: 1.5em; /* Reducido para móviles */
-            font-weight: bold;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 4px; /* Menos gap en móviles */
-        }
-        .dark-mode .plate {
-            color: #ffffff;
-        }
-        .time {
-            font-size: 0.8em; /* Reducido para móviles */
-            color: #666;
-            margin-top: 4px; /* Menos margen en móviles */
-            display: block;
-        }
-        .dark-mode .time {
-            color: #ffffff;
-        }
-        .time::after {
-            content: " hs.";
-        }
-        .note {
-            font-size: 0.7em; /* Reducido para móviles */
-            color: #e74c3c;
-            margin-top: 4px; /* Menos margen en móviles */
-            word-break: break-word;
-            display: block;
-        }
-        .dark-mode .note {
-            color: #ffffff;
-        }
-        .table-header {
-            display: none;
-        }
-        #searchInput {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 8px; /* Menos margen en móviles */
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #fff;
-            color: #333;
-            font-size: 14px;
-        }
-        .dark-mode #searchInput {
-            border-color: #555;
-            background: #3a3f44;
-            color: #ffffff;
-        }
-        #searchInput:focus {
-            outline: none;
-            border-color: #4a90e2;
-            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
-        }
-        .dark-mode #searchInput:focus {
-            border-color: #7f8c8d;
-            box-shadow: 0 0 5px rgba(127, 140, 141, 0.5);
-        }
-
-        /* Estilos para el modal de salida */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1001;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px; /* Menos padding en móviles */
-            border: 1px solid #888;
-            width: 90%; /* Más ancho relativo en móviles */
-            max-width: 400px; /* Reducido para móviles */
-            border-radius: 8px;
-            text-align: center;
-            position: relative;
-        }
-
-        .dark-mode .modal-content {
-            background-color: #2b2e33;
-            color: #ffffff;
-        }
-
-        .modal-content h3 {
-            font-size: 1.8em; /* Reducido para móviles */
-            margin-bottom: 10px; /* Menos margen en móviles */
-            text-transform: uppercase;
-        }
-
-        .modal-content p {
-            margin-bottom: 10px; /* Menos margen en móviles */
-            font-size: 1em; /* Reducido para móviles */
-        }
-
-        .modal-content .amount {
-            font-size: 1.8em; /* Reducido para móviles */
-            font-weight: bold;
-            margin-bottom: 10px; /* Menos margen en móviles */
-        }
-
-        .modal-content input {
-            width: 100%;
-            padding: 8px; /* Menos padding en móviles */
-            margin-bottom: 10px; /* Menos margen en móviles */
-            font-size: 1em; /* Reducido para móviles */
-        }
-
-        .modal-content .change {
-            font-weight: bold;
-            margin-bottom: 10px; /* Menos margen en móviles */
-            font-size: 1em; /* Reducido para móviles */
-        }
-
-        .modal-content button {
-            padding: 10px 20px; /* Menos padding en móviles */
-            background: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em; /* Reducido para móviles */
-        }
-
-        .modal-content button:hover {
-            background: #357abd;
-        }
-
-        /* Botón de cerrar modal */
-        .close-modal {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 20px; /* Reducido para móviles */
-            cursor: pointer;
-            color: #333;
-        }
-        .dark-mode .close-modal {
-            color: #ffffff;
-        }
-        .close-modal:hover {
-            color: #e74c3c;
-        }
-
-        /* Estilo para el toast */
-        .toast {
-            visibility: hidden;
-            min-width: 200px; /* Reducido para móviles */
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 10px; /* Menos padding en móviles */
-            position: fixed;
-            z-index: 1002;
-            left: 50%;
-            bottom: 20px; /* Menos margen en móviles */
-            transform: translateX(-50%);
-            font-size: 14px; /* Reducido para móviles */
-        }
-        .toast.show {
-            visibility: visible;
-            animation: fadeInOut 2s;
-        }
-        @keyframes fadeInOut {
-            0% { opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
-        /* Media Queries para móviles */
+        /* [El CSS permanece igual que la última versión móvil, lo omito para brevedad, pero asegúrate de copiarlo desde tu archivo actual] */
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
-                max-width: 100%; /* Ajuste completo al ancho */
+                max-width: 100%;
                 margin: 0;
                 border-radius: 0;
             }
             .form-section, .list-section {
-                width: 100%; /* Una columna */
+                width: 100%;
                 padding: 10px;
             }
             .form-section {
@@ -490,32 +27,32 @@ const database = getDatabase(app);
                 border-radius: 0;
             }
             .ingreso input#placa {
-                font-size: 1em; /* Más pequeño en móviles */
+                font-size: 1em;
             }
             button {
-                font-size: 1em; /* Más pequeño en móviles */
+                font-size: 1em;
                 padding: 10px;
             }
             .vehicle-btn {
-                font-size: 18px; /* Iconos más pequeños */
+                font-size: 18px;
                 padding: 6px;
             }
             .delete-btn {
-                font-size: 14px; /* Más pequeño en móviles */
+                font-size: 14px;
                 padding: 4px 10px;
             }
             .plate {
-                font-size: 1.2em; /* Más pequeño en móviles */
+                font-size: 1.2em;
             }
             .time {
-                font-size: 0.7em; /* Más pequeño en móviles */
+                font-size: 0.7em;
             }
             .note {
-                font-size: 0.6em; /* Más pequeño en móviles */
+                font-size: 0.6em;
             }
             .modal-content {
-                width: 85%; /* Más ancho relativo */
-                max-width: 350px; /* Más pequeño en móviles */
+                width: 85%;
+                max-width: 350px;
                 padding: 15px;
             }
             .modal-content h3 {
@@ -529,7 +66,7 @@ const database = getDatabase(app);
                 right: 5px;
             }
             .config-link {
-                font-size: 10px; /* Más pequeño en móviles */
+                font-size: 10px;
                 padding: 4px 8px;
             }
             .theme-toggle {
@@ -538,6 +75,7 @@ const database = getDatabase(app);
                 font-size: 16px;
             }
         }
+        /* Resto del CSS (copia desde tu versión actual) */
     </style>
 </head>
 <body>
@@ -589,10 +127,25 @@ const database = getDatabase(app);
     <script>
         console.log('Script cargado');
 
-        // Cargar tarifas desde localStorage o usar valores por defecto
+        // Tu configuración de Firebase (reemplaza con la tuya)
+        const firebaseConfig = {
+            apiKey: "TU_CLAVE_API",
+            authDomain: "TU_DOMINIO_AUTH",
+            databaseURL: "TU_URL_BASE_DATOS",
+            projectId: "TU_ID_PROYECTO",
+            storageBucket: "TU_CUBO_ALMACENAMIENTO",
+            messagingSenderId: "TU_ID_ENVIO_MENSAJES",
+            appId: "TU_ID_APP"
+        };
+
+        // Inicializa Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const estacionadosRef = database.ref('estacionados');
+
         let tarifas = JSON.parse(localStorage.getItem('tarifas')) || { auto: 5, moto: 3, camioneta: 7 };
-        let estacionados = JSON.parse(localStorage.getItem('estacionados')) || [];
         let selectedType = 'auto'; // Por defecto, Auto está preseleccionado
+        let estacionados = []; // Se cargará desde Firebase
 
         // Lista de placas frecuentes (puedes personalizarla)
         let frequentPlates = ['GG 123 HJ', 'HH 456 KL', 'JJ 789 MN'];
@@ -601,11 +154,18 @@ const database = getDatabase(app);
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
-            document.querySelector('.theme-toggle').textContent = '🌙'; // Luna para modo oscuro
+            document.querySelector('.theme-toggle').textContent = '🌙';
         }
 
-        let currentExitIndex = -1; // Índice del vehículo en salida
-        let cobro = 0; // Variable para guardar el cobro
+        let currentExitIndex = -1;
+        let cobro = 0;
+
+        // Cargar datos desde Firebase al iniciar
+        estacionadosRef.on('value', (snapshot) => {
+            estacionados = snapshot.val() ? Object.values(snapshot.val()) : [];
+            renderizarListas();
+            updateSuggestions();
+        });
 
         function toggleTheme() {
             const body = document.body;
@@ -622,7 +182,7 @@ const database = getDatabase(app);
 
             if (body.classList.contains('dark-mode')) {
                 body.classList.remove('dark-mode');
-                themeToggle.textContent = '🌞'; // Sol para modo claro
+                themeToggle.textContent = '🌞';
                 container.classList.remove('dark-mode');
                 formSection.classList.remove('dark-mode');
                 listSection.classList.remove('dark-mode');
@@ -635,7 +195,7 @@ const database = getDatabase(app);
                 localStorage.setItem('theme', 'light');
             } else {
                 body.classList.add('dark-mode');
-                themeToggle.textContent = '🌙'; // Luna para modo oscuro
+                themeToggle.textContent = '🌙';
                 container.classList.add('dark-mode');
                 formSection.classList.add('dark-mode');
                 listSection.classList.add('dark-mode');
@@ -647,8 +207,8 @@ const database = getDatabase(app);
                 if (modalContent) modalContent.classList.add('dark-mode');
                 localStorage.setItem('theme', 'dark');
             }
-            renderizarListas(); // Re-renderizar para aplicar el tema
-            updateSuggestions(); // Actualizar sugerencias con el tema
+            renderizarListas();
+            updateSuggestions();
         }
 
         function ingresarVehiculo() {
@@ -666,7 +226,7 @@ const database = getDatabase(app);
             const notas = notasInput.value.trim();
             const tipo = selectedType;
             const entrada = new Date().toISOString();
-            const hora = entryTimeInput.value; // Usar la hora del input
+            const hora = entryTimeInput.value;
 
             console.log('Datos ingresados:', { placa, notas, tipo, hora });
 
@@ -689,12 +249,9 @@ const database = getDatabase(app);
                 estado: 'E'
             };
 
-            estacionados.push(vehiculo);
-            localStorage.setItem('estacionados', JSON.stringify(estacionados));
-            renderizarListas();
+            estacionadosRef.push(vehiculo); // Guardar en Firebase
             showToast('Vehículo ingresado');
 
-            // Reiniciar preselección a Auto después de ingresar
             selectedType = 'auto';
             document.getElementById('autoBtn').classList.add('active');
             document.getElementById('camionetaBtn').classList.remove('active');
@@ -702,7 +259,6 @@ const database = getDatabase(app);
             placaInput.value = '';
             notasInput.value = '';
             console.log('Vehículo ingresado:', vehiculo);
-            updateSuggestions(); // Actualizar sugerencias después de ingresar
         }
 
         function salidaVehiculo(index) {
@@ -711,26 +267,24 @@ const database = getDatabase(app);
             const entrada = new Date(vehiculo.entrada);
 
             const tiempoMinutos = Math.ceil((salida - entrada) / (1000 * 60));
-            const horasCompletas = Math.floor(tiempoMinutos / 60); // Horas completas
-            const minutosRestantes = tiempoMinutos % 60; // Minutos restantes
+            const horasCompletas = Math.floor(tiempoMinutos / 60);
+            const minutosRestantes = tiempoMinutos % 60;
             const tarifaHora = tarifas[vehiculo.tipo];
 
-            // Calcular cobro: primera hora completa + fracciones de 30 minutos
-            let cobroTotal = tarifaHora; // Primera hora completa
+            let cobroTotal = tarifaHora;
             if (horasCompletas > 0) {
-                cobroTotal += (horasCompletas - 1) * tarifaHora; // Horas adicionales completas
+                cobroTotal += (horasCompletas - 1) * tarifaHora;
             }
-            const fracciones30min = Math.floor(minutosRestantes / 30); // Fracciones de 30 minutos
-            cobroTotal += fracciones30min * (tarifaHora / 2); // Cada 30 min es la mitad de la tarifa
+            const fracciones30min = Math.floor(minutosRestantes / 30);
+            cobroTotal += fracciones30min * (tarifaHora / 2);
 
             cobro = cobroTotal;
 
-            // Mostrar modal con los datos solicitados en renglones separados
             currentExitIndex = index;
-            document.getElementById('exitTitle').textContent = vehiculo.placa.toUpperCase(); // Solo la patente en mayúsculas y grande
+            document.getElementById('exitTitle').textContent = vehiculo.placa.toUpperCase();
             document.getElementById('exitInfo').innerHTML = `Entrada: ${new Date(vehiculo.entrada).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} hs.<br>Salida: ${salida.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} hs.<br>Tiempo: ${tiempoMinutos} minutos`;
-            document.getElementById('exitAmount').textContent = `$${cobro}`; // Monto en letra grande
-            document.getElementById('paymentInput').value = ''; // Limpiar el input
+            document.getElementById('exitAmount').textContent = `$${cobro}`;
+            document.getElementById('paymentInput').value = '';
             document.getElementById('changeOutput').textContent = 'Vuelto: $0';
             document.getElementById('exitModal').style.display = 'flex';
             if (document.body.classList.contains('dark-mode')) {
@@ -738,7 +292,6 @@ const database = getDatabase(app);
             }
             showToast('Salida confirmada');
 
-            // Añadir evento para teclas en el modal
             document.addEventListener('keydown', handleModalKeyPress);
         }
 
@@ -749,15 +302,13 @@ const database = getDatabase(app);
         }
 
         function confirmExit() {
-            // Permitir confirmar sin monto, solo verificar si el pago (opcional) es suficiente
             const payment = parseFloat(document.getElementById('paymentInput').value) || 0;
-            if (payment >= cobro || payment === 0) { // Permitir salida sin pago
-                estacionados.splice(currentExitIndex, 1);
-                localStorage.setItem('estacionados', JSON.stringify(estacionados));
+            if (payment >= cobro || payment === 0) {
+                estacionadosRef.child(Object.keys(estacionados)[currentExitIndex]).remove();
                 renderizarListas();
                 document.getElementById('exitModal').style.display = 'none';
                 currentExitIndex = -1;
-                document.removeEventListener('keydown', handleModalKeyPress); // Remover evento al cerrar
+                document.removeEventListener('keydown', handleModalKeyPress);
             } else {
                 alert('Pago insuficiente. Por favor, ingrese un monto mayor o igual al cobro.');
             }
@@ -767,11 +318,11 @@ const database = getDatabase(app);
             if (document.getElementById('exitModal').style.display === 'flex') {
                 if (event.key === 'Enter') {
                     event.preventDefault();
-                    document.getElementById('confirmButton').click(); // Simular clic en Confirmar
+                    document.getElementById('confirmButton').click();
                 } else if (event.key === 'Escape') {
                     event.preventDefault();
                     document.getElementById('exitModal').style.display = 'none';
-                    document.removeEventListener('keydown', handleModalKeyPress); // Remover evento al cerrar
+                    document.removeEventListener('keydown', handleModalKeyPress);
                 }
             }
         }
@@ -826,7 +377,7 @@ const database = getDatabase(app);
                 const deleteButton = document.createElement('button');
                 deleteButton.className = 'delete-btn';
                 deleteButton.textContent = 'SALIDA';
-                deleteButton.onclick = () => salidaVehiculo(estacionados.indexOf(v));
+                deleteButton.onclick = () => salidaVehiculo(index);
                 li.appendChild(div);
                 li.appendChild(deleteButton);
                 listaEstacionados.appendChild(li);
@@ -914,35 +465,5 @@ const database = getDatabase(app);
             });
         };
     </script>
-    <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('Service Worker registrado'))
-      .catch((error) => console.error('Error al registrar Service Worker:', error));
-  }
-</script>
-    <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBMdSRkAjfWGOP0cnTUI2UEsbXBI3vTNIo",
-    authDomain: "parking-c5830.firebaseapp.com",
-    projectId: "parking-c5830",
-    storageBucket: "parking-c5830.firebasestorage.app",
-    messagingSenderId: "242733687477",
-    appId: "1:242733687477:web:8be293fda8f69e00d114fc",
-    measurementId: "G-3RG4L13HKC"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
 </body>
 </html>
