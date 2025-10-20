@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Asegura responsividad -->
     <title>Gestor de Estacionamiento</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -11,43 +11,43 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Roboto', sans-serif;
-            transition: all 0.3s ease; /* Transición suave para cambios de tema */
+            transition: all 0.3s ease;
         }
         body {
             background: #f5f5f5;
             color: #333;
             min-height: 100vh;
-            padding: 20px;
-            position: relative; /* Contexto para el botón de tema y configuración */
+            padding: 10px; /* Menos padding en móviles */
+            position: relative;
         }
         body.dark-mode {
             background: #3a3f44;
-            color: #ffffff; /* Blanco como color base en modo oscuro */
+            color: #ffffff;
         }
         .theme-config {
-            position: fixed; /* Fija el contenedor en la pantalla */
-            top: 20px;
-            right: 20px; /* Margen superior derecho */
+            position: fixed;
+            top: 10px;
+            right: 10px;
             display: flex;
             align-items: center;
-            gap: 10px; /* Espacio entre el botón de configuración y tema */
-            z-index: 1000; /* Asegura que esté por encima */
-            border-radius: 8px; /* Bordes redondeados */
+            gap: 8px; /* Menos gap en móviles */
+            z-index: 1000;
+            border-radius: 8px;
         }
         .config-link {
-            padding: 5px 10px;
+            padding: 6px 10px;
             background: #ffffff;
             border: 1px solid #ccc;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             text-decoration: none;
             color: #333;
-            font-size: 14px;
+            font-size: 12px; /* Tamaño reducido para móviles */
             cursor: pointer;
         }
         .config-link.dark-mode {
             background: #2b2e33;
             border-color: #555;
-            color: #ffffff; /* Blanco en modo oscuro */
+            color: #ffffff;
         }
         .config-link:hover {
             background: #f0f0f0;
@@ -56,12 +56,12 @@
             background: #3a3f44;
         }
         .theme-toggle {
-            width: 40px; /* Ancho fijo pequeño */
-            height: 40px; /* Altura fija pequeña */
-            font-size: 24px;
+            width: 36px; /* Menos ancho en móviles */
+            height: 36px;
+            font-size: 20px; /* Icono más pequeño */
             background: transparent;
             border: 1px solid #ccc;
-            border-radius: 50%; /* Forma circular */
+            border-radius: 50%;
             cursor: pointer;
             color: #333;
             display: flex;
@@ -70,7 +70,7 @@
         }
         .theme-toggle.dark-mode {
             border-color: #555;
-            color: #ffffff; /* Blanco en modo oscuro */
+            color: #ffffff;
         }
         .theme-toggle:hover {
             background: #ddd;
@@ -84,7 +84,7 @@
             margin: 0 auto;
             background: #ffffff;
             border: 1px solid #ddd;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             position: relative;
@@ -97,39 +97,30 @@
         }
         .form-section {
             width: 40%;
-            padding: 20px;
+            padding: 15px; /* Menos padding en móviles */
             background: #f9f9f9;
-            border-radius: 8px 0 0 8px; /* Bordes redondeados solo en la esquina superior izquierda */
+            border-radius: 8px 0 0 8px;
         }
         .form-section.dark-mode {
             background: #3a3f44;
         }
         .list-section {
             width: 60%;
-            padding: 20px;
+            padding: 15px; /* Menos padding en móviles */
             background: #ffffff;
-            border-radius: 0 8px 8px 0; /* Bordes redondeados solo en la esquina superior derecha */
+            border-radius: 0 8px 8px 0;
         }
         .list-section.dark-mode {
             background: #2b2e33;
         }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-        .dark-mode h1 {
-            color: #ffffff; /* Blanco en modo oscuro */
-        }
         h2 {
             color: #333;
             margin: 0 0 10px 0;
-            font-size: 1.4em;
+            font-size: 1.3em; /* Reducido para móviles */
             text-transform: uppercase;
         }
         .dark-mode h2 {
-            color: #ffffff; /* Blanco en modo oscuro */
+            color: #ffffff;
         }
         .ingreso {
             display: flex;
@@ -137,62 +128,62 @@
             gap: 10px;
         }
         .ingreso input#placa {
-            font-size: 1.2em;
-            padding: 12px;
+            font-size: 1.1em; /* Reducido para móviles */
+            padding: 10px; /* Menos padding */
         }
         .ingreso .vehicle-buttons {
             display: flex;
             justify-content: space-between;
             margin-bottom: 10px;
         }
-        input, select {
+        input {
             width: 100%;
             padding: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 8px; /* Menos margen en móviles */
             border: 1px solid #ccc;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             background: #fff;
             color: #333;
             font-size: 14px;
         }
-        .dark-mode input, .dark-mode select {
+        .dark-mode input {
             border-color: #555;
             background: #3a3f44;
-            color: #ffffff; /* Blanco en modo oscuro */
+            color: #ffffff;
         }
-        input:focus, select:focus {
+        input:focus {
             outline: none;
             border-color: #4a90e2;
             box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
         }
-        .dark-mode input:focus, .dark-mode select:focus {
+        .dark-mode input:focus {
             border-color: #7f8c8d;
             box-shadow: 0 0 5px rgba(127, 140, 141, 0.5);
         }
         button {
             width: 100%;
-            padding: 16px;
+            padding: 12px; /* Menos padding en móviles */
             background: #4a90e2;
             color: white;
             border: none;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 32px;
+            font-size: 1.2em; /* Reducido para móviles */
         }
         button:hover {
             background: #357abd;
         }
         .vehicle-btn {
             flex: 1;
-            padding: 10px;
+            padding: 8px; /* Menos padding en móviles */
             border: 1px solid #ccc;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 24px;
+            font-size: 20px; /* Icono más pequeño */
             text-align: center;
             background: transparent;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            margin: 0 5px;
+            margin: 0 4px; /* Menos margen en móviles */
         }
         .dark-mode .vehicle-btn {
             border-color: #555;
@@ -216,10 +207,10 @@
         }
         .delete-btn {
             width: auto;
-            padding: 5px 15px; /* Reducido de 8px 24px a 5px 15px */
+            padding: 6px 12px; /* Menos padding en móviles */
             background: #e74c3c;
-            border-radius: 8px; /* Bordes redondeados */
-            font-size: 18px; /* Reducido de 24px a 18px */
+            border-radius: 8px;
+            font-size: 16px; /* Reducido para móviles */
             align-self: center;
             text-transform: uppercase;
         }
@@ -232,9 +223,9 @@
             background: #e67e22;
             color: white;
             border: none;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px; /* Reducido para móviles */
             display: none;
         }
         .clear-filter-btn:hover {
@@ -249,12 +240,12 @@
         li {
             display: flex;
             justify-content: space-between;
-            padding: 10px;
-            margin-bottom: 10px;
+            padding: 8px; /* Menos padding en móviles */
+            margin-bottom: 8px; /* Menos margen en móviles */
             background: #f9f9f9;
             border: 1px solid #ddd;
             border-left: 4px solid #4a90e2;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             align-items: center;
         }
         .dark-mode li {
@@ -275,37 +266,37 @@
             border-left-color: #f39c12;
         }
         .plate {
-            font-size: 2em; /* Tamaño actual de los emojis y placa */
+            font-size: 1.5em; /* Reducido para móviles */
             font-weight: bold;
             color: #333;
             display: flex;
             align-items: center;
-            gap: 5px; /* Espacio entre el emoji y la placa */
+            gap: 4px; /* Menos gap en móviles */
         }
         .dark-mode .plate {
-            color: #ffffff; /* Blanco puro en modo oscuro */
+            color: #ffffff;
         }
         .time {
-            font-size: 0.9em;
+            font-size: 0.8em; /* Reducido para móviles */
             color: #666;
-            margin-top: 5px;
+            margin-top: 4px; /* Menos margen en móviles */
             display: block;
         }
         .dark-mode .time {
-            color: #ffffff; /* Blanco puro en modo oscuro */
+            color: #ffffff;
         }
         .time::after {
             content: " hs.";
         }
         .note {
-            font-size: 0.8em;
+            font-size: 0.7em; /* Reducido para móviles */
             color: #e74c3c;
-            margin-top: 5px;
+            margin-top: 4px; /* Menos margen en móviles */
             word-break: break-word;
             display: block;
         }
         .dark-mode .note {
-            color: #ffffff; /* Blanco puro en modo oscuro */
+            color: #ffffff;
         }
         .table-header {
             display: none;
@@ -313,9 +304,9 @@
         #searchInput {
             width: 100%;
             padding: 8px;
-            margin-bottom: 10px; /* Margen inferior para separar del listado */
+            margin-bottom: 8px; /* Menos margen en móviles */
             border: 1px solid #ccc;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             background: #fff;
             color: #333;
             font-size: 14px;
@@ -323,7 +314,7 @@
         .dark-mode #searchInput {
             border-color: #555;
             background: #3a3f44;
-            color: #ffffff; /* Blanco en modo oscuro */
+            color: #ffffff;
         }
         #searchInput:focus {
             outline: none;
@@ -337,7 +328,7 @@
 
         /* Estilos para el modal de salida */
         .modal {
-            display: none; /* Oculto por defecto */
+            display: none;
             position: fixed;
             z-index: 1001;
             left: 0;
@@ -345,21 +336,21 @@
             width: 100%;
             height: 100%;
             overflow: auto;
-            background-color: rgba(0,0,0,0.4); /* Fondo negro con opacidad */
+            background-color: rgba(0,0,0,0.4);
             align-items: center;
             justify-content: center;
         }
 
         .modal-content {
             background-color: #fefefe;
-            margin: 5% auto; /* Menos margen superior para más espacio */
-            padding: 30px; /* Más padding para no estar tan apretado */
+            margin: 5% auto;
+            padding: 20px; /* Menos padding en móviles */
             border: 1px solid #888;
-            width: 80%;
-            max-width: 600px; /* Aumentado a 600px */
-            border-radius: 8px; /* Bordes redondeados */
+            width: 90%; /* Más ancho relativo en móviles */
+            max-width: 400px; /* Reducido para móviles */
+            border-radius: 8px;
             text-align: center;
-            position: relative; /* Para posicionar el botón de cerrar */
+            position: relative;
         }
 
         .dark-mode .modal-content {
@@ -368,43 +359,43 @@
         }
 
         .modal-content h3 {
-            font-size: 2.5em; /* Letra grande para la patente */
-            margin-bottom: 15px; /* Más espacio */
+            font-size: 1.8em; /* Reducido para móviles */
+            margin-bottom: 10px; /* Menos margen en móviles */
             text-transform: uppercase;
         }
 
         .modal-content p {
-            margin-bottom: 15px; /* Más espacio entre líneas */
-            font-size: 1.1em; /* Texto un poco más grande */
+            margin-bottom: 10px; /* Menos margen en móviles */
+            font-size: 1em; /* Reducido para móviles */
         }
 
         .modal-content .amount {
-            font-size: 2.5em; /* Letra bien grande para el monto a cobrar */
+            font-size: 1.8em; /* Reducido para móviles */
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 10px; /* Menos margen en móviles */
         }
 
         .modal-content input {
             width: 100%;
-            padding: 10px; /* Más padding */
-            margin-bottom: 15px; /* Más espacio */
-            font-size: 1.1em; /* Texto más legible */
+            padding: 8px; /* Menos padding en móviles */
+            margin-bottom: 10px; /* Menos margen en móviles */
+            font-size: 1em; /* Reducido para móviles */
         }
 
         .modal-content .change {
             font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 1.2em; /* Texto un poco más grande */
+            margin-bottom: 10px; /* Menos margen en móviles */
+            font-size: 1em; /* Reducido para móviles */
         }
 
         .modal-content button {
-            padding: 12px 25px; /* Más padding */
+            padding: 10px 20px; /* Menos padding en móviles */
             background: #4a90e2;
             color: white;
             border: none;
-            border-radius: 8px; /* Bordes redondeados */
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 1.2em; /* Botón más legible */
+            font-size: 1.1em; /* Reducido para móviles */
         }
 
         .modal-content button:hover {
@@ -416,7 +407,7 @@
             position: absolute;
             top: 10px;
             right: 15px;
-            font-size: 24px;
+            font-size: 20px; /* Reducido para móviles */
             cursor: pointer;
             color: #333;
         }
@@ -430,18 +421,18 @@
         /* Estilo para el toast */
         .toast {
             visibility: hidden;
-            min-width: 250px;
+            min-width: 200px; /* Reducido para móviles */
             background-color: #333;
             color: #fff;
             text-align: center;
-            border-radius: 8px; /* Bordes redondeados */
-            padding: 12px;
+            border-radius: 8px;
+            padding: 10px; /* Menos padding en móviles */
             position: fixed;
             z-index: 1002;
             left: 50%;
-            bottom: 30px;
+            bottom: 20px; /* Menos margen en móviles */
             transform: translateX(-50%);
-            font-size: 16px;
+            font-size: 14px; /* Reducido para móviles */
         }
         .toast.show {
             visibility: visible;
@@ -453,6 +444,74 @@
             90% { opacity: 1; }
             100% { opacity: 0; }
         }
+
+        /* Media Queries para móviles */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                max-width: 100%; /* Ajuste completo al ancho */
+                margin: 0;
+                border-radius: 0;
+            }
+            .form-section, .list-section {
+                width: 100%; /* Una columna */
+                padding: 10px;
+            }
+            .form-section {
+                border-radius: 0;
+            }
+            .list-section {
+                border-radius: 0;
+            }
+            .ingreso input#placa {
+                font-size: 1em; /* Más pequeño en móviles */
+            }
+            button {
+                font-size: 1em; /* Más pequeño en móviles */
+                padding: 10px;
+            }
+            .vehicle-btn {
+                font-size: 18px; /* Iconos más pequeños */
+                padding: 6px;
+            }
+            .delete-btn {
+                font-size: 14px; /* Más pequeño en móviles */
+                padding: 4px 10px;
+            }
+            .plate {
+                font-size: 1.2em; /* Más pequeño en móviles */
+            }
+            .time {
+                font-size: 0.7em; /* Más pequeño en móviles */
+            }
+            .note {
+                font-size: 0.6em; /* Más pequeño en móviles */
+            }
+            .modal-content {
+                width: 85%; /* Más ancho relativo */
+                max-width: 350px; /* Más pequeño en móviles */
+                padding: 15px;
+            }
+            .modal-content h3 {
+                font-size: 1.5em;
+            }
+            .modal-content .amount {
+                font-size: 1.5em;
+            }
+            .theme-config {
+                top: 5px;
+                right: 5px;
+            }
+            .config-link {
+                font-size: 10px; /* Más pequeño en móviles */
+                padding: 4px 8px;
+            }
+            .theme-toggle {
+                width: 30px;
+                height: 30px;
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -462,7 +521,6 @@
     </div>
     <div class="container">
         <div class="form-section">
-            <h1></h1>
             <section class="ingreso">
                 <h2>INGRESO DE VEHÍCULO</h2>
                 <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off">
@@ -755,13 +813,13 @@
             toast.className = 'toast show';
             setTimeout(() => {
                 toast.className = 'toast';
-            }, 2000); // Desaparece después de 2 segundos
+            }, 2000);
         }
 
         function updateSuggestions() {
             const datalist = document.getElementById('placaSuggestions');
-            datalist.innerHTML = ''; // Limpiar sugerencias existentes
-            const uniquePlates = [...new Set(estacionados.map(v => v.placa))].slice(0, 5); // Últimas 5 placas únicas
+            datalist.innerHTML = '';
+            const uniquePlates = [...new Set(estacionados.map(v => v.placa))].slice(0, 5);
             uniquePlates.forEach(placa => {
                 const option = document.createElement('option');
                 option.value = placa;
@@ -776,19 +834,17 @@
             });
         }
 
-        // Actualizar hora de entrada cada minuto
         function updateEntryTime() {
             const entryTimeInput = document.getElementById('entryTime');
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
             entryTimeInput.value = now;
         }
-        setInterval(updateEntryTime, 60000); // Actualizar cada minuto
-        updateEntryTime(); // Inicializar al cargar
+        setInterval(updateEntryTime, 60000);
+        updateEntryTime();
 
         window.onload = function() {
-            console.log('Página cargada, renderizando listas');
             renderizarListas();
-            updateSuggestions(); // Inicializar sugerencias
+            updateSuggestions();
             const searchInput = document.getElementById('searchInput');
             const clearFilterBtn = document.getElementById('clearFilterBtn');
             const autoBtn = document.getElementById('autoBtn');
@@ -802,7 +858,7 @@
             });
 
             const placaInput = document.getElementById('placa');
-            placaInput.addEventListener('input', updateSuggestions); // Actualizar sugerencias al escribir
+            placaInput.addEventListener('input', updateSuggestions);
             placaInput.addEventListener('keypress', function(event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
