@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Estacionamiento</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+            transition: all 0.3s ease; /* Transición suave para cambios de tema */
+        }
+        body {
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative; /* Contexto para el botón de tema y configuración */
+        }
+        body.dark-mode {
+            background: #3a3f44;
+            color: #ffffff; /* Blanco como color base en modo oscuro */
+        }
+        .theme-config {
+            position: fixed; /* Fija el contenedor en la pantalla */
+            top: 20px;
+            right: 20px; /* Margen superior derecho */
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Espacio entre el botón de configuración y tema */
+            z-index: 1000; /* Asegura que esté por encima */
+            border-radius: 8px; /* Bordes redondeados */
+        }
+        .config-link {
+            padding: 5px 10px;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px; /* Bordes redondeados */
+            text-decoration: none;
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .config-link.dark-mode {
+            background: #2b2e33;
+            border-color: #555;
+            color: #ffffff; /* Blanco en modo oscuro */
+        }
+        .config-link:hover {
+            background: #f0f0f0;
+        }
+        .config-link.dark-mode:hover {
+            background: #3a3f44;
+        }
+        .theme-toggle {
+            width: 40px; /* Ancho fijo pequeño */
+            height: 40px; /* Altura fija pequeña */
+            font-size: 24px;
+            background: transparent;
+            border: 1px solid #ccc;
+            border-radius: 50%; /* Forma circular */
+            cursor: pointer;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .theme-toggle.dark-mode {
+            border-color: #555;
+            color: #ffffff; /* Blanco en modo oscuro */
+        }
+        .theme-toggle:hover {
+            background: #ddd;
+        }
+        .theme-toggle.dark-mode:hover {
+            background: #444;
+        }
+        .container {
+            display: flex;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 8px; /* Bordes redondeados */
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+        .container.dark-mode {
+            background: #2b2e33;
+            border-color: #555;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .form-section {
+            width: 40%;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px 0 0 8px; /* Bordes redondeados solo en la esquina superior izquierda */
+        }
+        .form-section.dark-mode {
+            background: #3a3f44;
+        }
+        .list-section {
+            width: 60%;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 0 8px 8px 0; /* Bordes redondeados solo en la esquina superior derecha */
+        }
+        .list-section.dark-mode {
+            background: #2b2e33;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        .dark-mode h1 {
+            color: #ffffff; /* Blanco en modo oscuro */
+        }
+        h2 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 1.4em;
+            text-transform: uppercase;
+        }
+        .dark-mode h2 {
+            color: #ffffff; /* Blanco en modo oscuro */
+        }
+        .ingreso {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ingreso input#placa {
+            font-size: 1.2em;
+            padding: 12px;
+        }
+        .ingreso .vehicle-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px; /* Bordes redondeados */
+            background: #fff;
+            color: #333;
+            font-size: 14px;
+        }
+        .dark-mode input, .dark-mode select {
+            border-color: #555;
+            background: #3a3f44;
+            color: #ffffff; /* Blanco en modo oscuro */
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+        }
+        .dark-mode input:focus, .dark-mode select:focus {
+            border-color: #7f8c8d;
+            box-shadow: 0 0 5px rgba(127, 140, 141, 0.5);
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px; /* Bordes redondeados */
+            cursor: pointer;
+            font-size: 32px;
+        }
+        button:hover {
+            background: #357abd;
+        }
+        .vehicle-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px; /* Bordes redondeados */
+            cursor: pointer;
+            font-size: 24px;
+            text-align: center;
+            background: transparent;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            margin: 0 5px;
+        }
+        .dark-mode .vehicle-btn {
+            border-color: #555;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .vehicle-btn.active {
+            border: 3px solid #4a90e2;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .dark-mode .vehicle-btn.active {
+            border-color: #7f8c8d;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .vehicle-btn:hover {
+            border-color: #95a5a6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+        .dark-mode .vehicle-btn:hover {
+            border-color: #95a5a6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+        }
+        .delete-btn {
+            width: auto;
+            padding: 5px 15px; /* Reducido de 8px 24px a 5px 15px */
+            background: #e74c3c;
+            border-radius: 8px; /* Bordes redondeados */
+            font-size: 18px; /* Reducido de 24px a 18px */
+            align-self: center;
+            text-transform: uppercase;
+        }
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+        .clear-filter-btn {
+            width: 100%;
+            padding: 8px;
+            background: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 8px; /* Bordes redondeados */
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+        }
+        .clear-filter-btn:hover {
+            background: #d35400;
+        }
+        .clear-filter-btn.active {
+            display: block;
+        }
+        ul {
+            list-style: none;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-left: 4px solid #4a90e2;
+            border-radius: 8px; /* Bordes redondeados */
+            align-items: center;
+        }
+        .dark-mode li {
+            background: #3a3f44;
+            border-color: #555;
+            border-left-color: #7f8c8d;
+        }
+        .in-parking {
+            border-left-color: #4a90e2;
+        }
+        .dark-mode .in-parking {
+            border-left-color: #7f8c8d;
+        }
+        .used {
+            border-left-color: #f1c40f;
+        }
+        .dark-mode .used {
+            border-left-color: #f39c12;
+        }
+        .plate {
+            font-size: 2em; /* Tamaño actual de los emojis y placa */
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 5px; /* Espacio entre el emoji y la placa */
+        }
+        .dark-mode .plate {
+            color: #ffffff; /* Blanco puro en modo oscuro */
+        }
+        .time {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+            display: block;
+        }
+        .dark-mode .time {
+            color: #ffffff; /* Blanco puro en modo oscuro */
+        }
+        .time::after {
+            content: " hs.";
+        }
+        .note {
+            font-size: 0.8em;
+            color: #e74c3c;
+            margin-top: 5px;
+            word-break: break-word;
+            display: block;
+        }
+        .dark-mode .note {
+            color: #ffffff; /* Blanco puro en modo oscuro */
+        }
+        .table-header {
+            display: none;
+        }
+        #searchInput {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px; /* Margen inferior para separar del listado */
+            border: 1px solid #ccc;
+            border-radius: 8px; /* Bordes redondeados */
+            background: #fff;
+            color: #333;
+            font-size: 14px;
+        }
+        .dark-mode #searchInput {
+            border-color: #555;
+            background: #3a3f44;
+            color: #ffffff; /* Blanco en modo oscuro */
+        }
+        #searchInput:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+        }
+        .dark-mode #searchInput:focus {
+            border-color: #7f8c8d;
+            box-shadow: 0 0 5px rgba(127, 140, 141, 0.5);
+        }
+
+        /* Estilos para el modal de salida */
+        .modal {
+            display: none; /* Oculto por defecto */
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4); /* Fondo negro con opacidad */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto; /* Menos margen superior para más espacio */
+            padding: 30px; /* Más padding para no estar tan apretado */
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px; /* Aumentado a 600px */
+            border-radius: 8px; /* Bordes redondeados */
+            text-align: center;
+            position: relative; /* Para posicionar el botón de cerrar */
+        }
+
+        .dark-mode .modal-content {
+            background-color: #2b2e33;
+            color: #ffffff;
+        }
+
+        .modal-content h3 {
+            font-size: 2.5em; /* Letra grande para la patente */
+            margin-bottom: 15px; /* Más espacio */
+            text-transform: uppercase;
+        }
+
+        .modal-content p {
+            margin-bottom: 15px; /* Más espacio entre líneas */
+            font-size: 1.1em; /* Texto un poco más grande */
+        }
+
+        .modal-content .amount {
+            font-size: 2.5em; /* Letra bien grande para el monto a cobrar */
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 10px; /* Más padding */
+            margin-bottom: 15px; /* Más espacio */
+            font-size: 1.1em; /* Texto más legible */
+        }
+
+        .modal-content .change {
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.2em; /* Texto un poco más grande */
+        }
+
+        .modal-content button {
+            padding: 12px 25px; /* Más padding */
+            background: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px; /* Bordes redondeados */
+            cursor: pointer;
+            font-size: 1.2em; /* Botón más legible */
+        }
+
+        .modal-content button:hover {
+            background: #357abd;
+        }
+
+        /* Botón de cerrar modal */
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #333;
+        }
+        .dark-mode .close-modal {
+            color: #ffffff;
+        }
+        .close-modal:hover {
+            color: #e74c3c;
+        }
+
+        /* Estilo para el toast */
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px; /* Bordes redondeados */
+            padding: 12px;
+            position: fixed;
+            z-index: 1002;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 16px;
+        }
+        .toast.show {
+            visibility: visible;
+            animation: fadeInOut 2s;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="theme-config">
+        <a href="config.html" class="config-link" target="_blank">Configuración</a>
+        <button class="theme-toggle" onclick="toggleTheme()">🌞</button>
+    </div>
+    <div class="container">
+        <div class="form-section">
+            <h1></h1>
+            <section class="ingreso">
+                <h2>INGRESO DE VEHÍCULO</h2>
+                <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off">
+                <input type="text" id="entryTime" value="" readonly>
+                <datalist id="placaSuggestions"></datalist>
+                <input type="text" id="notas" placeholder="Notas">
+                <div class="vehicle-buttons">
+                    <button id="autoBtn" class="vehicle-btn active">🚗</button>
+                    <button id="camionetaBtn" class="vehicle-btn">🚐</button>
+                    <button id="motoBtn" class="vehicle-btn">🏍️</button>
+                </div>
+                <button onclick="ingresarVehiculo()">ENTRADA</button>
+            </section>
+        </div>
+        <div class="list-section">
+            <h2>ESTACIONADOS: <span id="count">0</span></h2>
+            <input type="text" id="searchInput" placeholder="Buscar placa...">
+            <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
+            <div class="table-header"></div>
+            <ul id="listaEstacionados"></ul>
+        </div>
+    </div>
+
+    <!-- Modal para salida de vehículo -->
+    <div id="exitModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="document.getElementById('exitModal').style.display='none'">&times;</span>
+            <h3 id="exitTitle"></h3>
+            <p id="exitInfo"></p>
+            <p class="amount" id="exitAmount"></p>
+            <input type="number" id="paymentInput" placeholder="Monto pagado ($)" oninput="calculateChange()">
+            <p class="change" id="changeOutput">Vuelto: $0</p>
+            <button id="confirmButton" onclick="confirmExit()">Confirmar</button>
+        </div>
+    </div>
+
+    <!-- Toast para feedback visual -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        console.log('Script cargado');
+
+        // Cargar tarifas desde localStorage o usar valores por defecto
+        let tarifas = JSON.parse(localStorage.getItem('tarifas')) || { auto: 5, moto: 3, camioneta: 7 };
+        let estacionados = JSON.parse(localStorage.getItem('estacionados')) || [];
+        let selectedType = 'auto'; // Por defecto, Auto está preseleccionado
+
+        // Lista de placas frecuentes (puedes personalizarla)
+        let frequentPlates = ['GG 123 HJ', 'HH 456 KL', 'JJ 789 MN'];
+
+        // Cargar tema desde localStorage o usar modo claro por defecto
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('.theme-toggle').textContent = '🌙'; // Luna para modo oscuro
+        }
+
+        let currentExitIndex = -1; // Índice del vehículo en salida
+        let cobro = 0; // Variable para guardar el cobro
+
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.querySelector('.theme-toggle');
+            const container = document.querySelector('.container');
+            const formSection = document.querySelector('.form-section');
+            const listSection = document.querySelector('.list-section');
+            const inputs = document.querySelectorAll('input, select');
+            const vehicleButtons = document.querySelectorAll('.vehicle-btn');
+            const deleteButtons = document.querySelectorAll('.delete-btn');
+            const clearFilterBtn = document.querySelector('.clear-filter-btn');
+            const lis = document.querySelectorAll('li');
+            const modalContent = document.querySelector('.modal-content');
+
+            if (body.classList.contains('dark-mode')) {
+                body.classList.remove('dark-mode');
+                themeToggle.textContent = '🌞'; // Sol para modo claro
+                container.classList.remove('dark-mode');
+                formSection.classList.remove('dark-mode');
+                listSection.classList.remove('dark-mode');
+                inputs.forEach(input => input.classList.remove('dark-mode'));
+                vehicleButtons.forEach(btn => btn.classList.remove('dark-mode'));
+                deleteButtons.forEach(btn => btn.classList.remove('dark-mode'));
+                clearFilterBtn.classList.remove('dark-mode');
+                lis.forEach(li => li.classList.remove('dark-mode'));
+                if (modalContent) modalContent.classList.remove('dark-mode');
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeToggle.textContent = '🌙'; // Luna para modo oscuro
+                container.classList.add('dark-mode');
+                formSection.classList.add('dark-mode');
+                listSection.classList.add('dark-mode');
+                inputs.forEach(input => input.classList.add('dark-mode'));
+                vehicleButtons.forEach(btn => btn.classList.add('dark-mode'));
+                deleteButtons.forEach(btn => btn.classList.add('dark-mode'));
+                clearFilterBtn.classList.add('dark-mode');
+                lis.forEach(li => li.classList.add('dark-mode'));
+                if (modalContent) modalContent.classList.add('dark-mode');
+                localStorage.setItem('theme', 'dark');
+            }
+            renderizarListas(); // Re-renderizar para aplicar el tema
+            updateSuggestions(); // Actualizar sugerencias con el tema
+        }
+
+        function ingresarVehiculo() {
+            console.log('Intentando ingresar vehículo');
+            const placaInput = document.getElementById('placa');
+            const notasInput = document.getElementById('notas');
+            const entryTimeInput = document.getElementById('entryTime');
+
+            if (!placaInput || !notasInput || !entryTimeInput) {
+                console.log('Error: Elementos no encontrados', { placaInput, notasInput, entryTimeInput });
+                return;
+            }
+
+            const placa = placaInput.value.trim().toUpperCase();
+            const notas = notasInput.value.trim();
+            const tipo = selectedType;
+            const entrada = new Date().toISOString();
+            const hora = entryTimeInput.value; // Usar la hora del input
+
+            console.log('Datos ingresados:', { placa, notas, tipo, hora });
+
+            if (placa === '') {
+                alert('Por favor, ingresa una patente válida');
+                return;
+            }
+
+            if (estacionados.some(v => v.placa === placa)) {
+                alert('Este vehículo ya está estacionado');
+                return;
+            }
+
+            const vehiculo = {
+                placa,
+                notas,
+                tipo,
+                entrada,
+                hora,
+                estado: 'E'
+            };
+
+            estacionados.push(vehiculo);
+            localStorage.setItem('estacionados', JSON.stringify(estacionados));
+            renderizarListas();
+            showToast('Vehículo ingresado');
+
+            // Reiniciar preselección a Auto después de ingresar
+            selectedType = 'auto';
+            document.getElementById('autoBtn').classList.add('active');
+            document.getElementById('camionetaBtn').classList.remove('active');
+            document.getElementById('motoBtn').classList.remove('active');
+            placaInput.value = '';
+            notasInput.value = '';
+            console.log('Vehículo ingresado:', vehiculo);
+            updateSuggestions(); // Actualizar sugerencias después de ingresar
+        }
+
+        function salidaVehiculo(index) {
+            const vehiculo = estacionados[index];
+            const salida = new Date();
+            const entrada = new Date(vehiculo.entrada);
+
+            const tiempoMinutos = Math.ceil((salida - entrada) / (1000 * 60));
+            const horasCompletas = Math.floor(tiempoMinutos / 60); // Horas completas
+            const minutosRestantes = tiempoMinutos % 60; // Minutos restantes
+            const tarifaHora = tarifas[vehiculo.tipo];
+
+            // Calcular cobro: primera hora completa + fracciones de 30 minutos
+            let cobroTotal = tarifaHora; // Primera hora completa
+            if (horasCompletas > 0) {
+                cobroTotal += (horasCompletas - 1) * tarifaHora; // Horas adicionales completas
+            }
+            const fracciones30min = Math.floor(minutosRestantes / 30); // Fracciones de 30 minutos
+            cobroTotal += fracciones30min * (tarifaHora / 2); // Cada 30 min es la mitad de la tarifa
+
+            cobro = cobroTotal;
+
+            // Mostrar modal con los datos solicitados en renglones separados
+            currentExitIndex = index;
+            document.getElementById('exitTitle').textContent = vehiculo.placa.toUpperCase(); // Solo la patente en mayúsculas y grande
+            document.getElementById('exitInfo').innerHTML = `Entrada: ${new Date(vehiculo.entrada).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} hs.<br>Salida: ${salida.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} hs.<br>Tiempo: ${tiempoMinutos} minutos`;
+            document.getElementById('exitAmount').textContent = `$${cobro}`; // Monto en letra grande
+            document.getElementById('paymentInput').value = ''; // Limpiar el input
+            document.getElementById('changeOutput').textContent = 'Vuelto: $0';
+            document.getElementById('exitModal').style.display = 'flex';
+            if (document.body.classList.contains('dark-mode')) {
+                document.getElementById('exitModal').querySelector('.modal-content').classList.add('dark-mode');
+            }
+            showToast('Salida confirmada');
+
+            // Añadir evento para teclas en el modal
+            document.addEventListener('keydown', handleModalKeyPress);
+        }
+
+        function calculateChange() {
+            const payment = parseFloat(document.getElementById('paymentInput').value) || 0;
+            const change = payment - cobro;
+            document.getElementById('changeOutput').textContent = `Vuelto: $${change >= 0 ? change : 'Pago insuficiente'}`;
+        }
+
+        function confirmExit() {
+            // Permitir confirmar sin monto, solo verificar si el pago (opcional) es suficiente
+            const payment = parseFloat(document.getElementById('paymentInput').value) || 0;
+            if (payment >= cobro || payment === 0) { // Permitir salida sin pago
+                estacionados.splice(currentExitIndex, 1);
+                localStorage.setItem('estacionados', JSON.stringify(estacionados));
+                renderizarListas();
+                document.getElementById('exitModal').style.display = 'none';
+                currentExitIndex = -1;
+                document.removeEventListener('keydown', handleModalKeyPress); // Remover evento al cerrar
+            } else {
+                alert('Pago insuficiente. Por favor, ingrese un monto mayor o igual al cobro.');
+            }
+        }
+
+        function handleModalKeyPress(event) {
+            if (document.getElementById('exitModal').style.display === 'flex') {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    document.getElementById('confirmButton').click(); // Simular clic en Confirmar
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    document.getElementById('exitModal').style.display = 'none';
+                    document.removeEventListener('keydown', handleModalKeyPress); // Remover evento al cerrar
+                }
+            }
+        }
+
+        function renderizarListas() {
+            const listaEstacionados = document.getElementById('listaEstacionados');
+            const count = document.getElementById('count');
+            const searchInput = document.getElementById('searchInput');
+            const clearFilterBtn = document.getElementById('clearFilterBtn');
+
+            if (!listaEstacionados || !count || !searchInput || !clearFilterBtn) {
+                console.log('Error: Elementos no encontrados');
+                return;
+            }
+
+            const searchTerm = searchInput.value.trim().toUpperCase();
+            listaEstacionados.innerHTML = '';
+            count.textContent = estacionados.length;
+
+            clearFilterBtn.classList.toggle('active', searchTerm !== '');
+
+            const filteredEstacionados = searchTerm === ''
+                ? estacionados
+                : estacionados.filter(v => v.placa.includes(searchTerm));
+
+            filteredEstacionados.forEach((v, index) => {
+                const li = document.createElement('li');
+                li.className = v.estado === 'E' ? 'in-parking' : 'used';
+                if (document.body.classList.contains('dark-mode')) li.classList.add('dark-mode');
+                const plateSpan = document.createElement('span');
+                plateSpan.className = 'plate';
+                if (document.body.classList.contains('dark-mode')) plateSpan.classList.add('dark-mode');
+                let emoji = '';
+                if (v.tipo === 'auto') emoji = '🚗 ';
+                else if (v.tipo === 'camioneta') emoji = '🚐 ';
+                else if (v.tipo === 'moto') emoji = '🏍️ ';
+                plateSpan.textContent = emoji + v.placa;
+                const timeSpan = document.createElement('span');
+                timeSpan.className = 'time';
+                if (document.body.classList.contains('dark-mode')) timeSpan.classList.add('dark-mode');
+                timeSpan.textContent = v.hora;
+                const noteSpan = v.notas ? document.createElement('span') : null;
+                if (noteSpan) {
+                    noteSpan.className = 'note';
+                    if (document.body.classList.contains('dark-mode')) noteSpan.classList.add('dark-mode');
+                    noteSpan.textContent = v.notas;
+                }
+                const div = document.createElement('div');
+                div.appendChild(plateSpan);
+                div.appendChild(timeSpan);
+                if (noteSpan) div.appendChild(noteSpan);
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete-btn';
+                deleteButton.textContent = 'SALIDA';
+                deleteButton.onclick = () => salidaVehiculo(estacionados.indexOf(v));
+                li.appendChild(div);
+                li.appendChild(deleteButton);
+                listaEstacionados.appendChild(li);
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show';
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 2000); // Desaparece después de 2 segundos
+        }
+
+        function updateSuggestions() {
+            const datalist = document.getElementById('placaSuggestions');
+            datalist.innerHTML = ''; // Limpiar sugerencias existentes
+            const uniquePlates = [...new Set(estacionados.map(v => v.placa))].slice(0, 5); // Últimas 5 placas únicas
+            uniquePlates.forEach(placa => {
+                const option = document.createElement('option');
+                option.value = placa;
+                datalist.appendChild(option);
+            });
+            frequentPlates.forEach(placa => {
+                if (!uniquePlates.includes(placa)) {
+                    const option = document.createElement('option');
+                    option.value = placa;
+                    datalist.appendChild(option);
+                }
+            });
+        }
+
+        // Actualizar hora de entrada cada minuto
+        function updateEntryTime() {
+            const entryTimeInput = document.getElementById('entryTime');
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            entryTimeInput.value = now;
+        }
+        setInterval(updateEntryTime, 60000); // Actualizar cada minuto
+        updateEntryTime(); // Inicializar al cargar
+
+        window.onload = function() {
+            console.log('Página cargada, renderizando listas');
+            renderizarListas();
+            updateSuggestions(); // Inicializar sugerencias
+            const searchInput = document.getElementById('searchInput');
+            const clearFilterBtn = document.getElementById('clearFilterBtn');
+            const autoBtn = document.getElementById('autoBtn');
+            const camionetaBtn = document.getElementById('camionetaBtn');
+            const motoBtn = document.getElementById('motoBtn');
+
+            searchInput.addEventListener('input', renderizarListas);
+            clearFilterBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                renderizarListas();
+            });
+
+            const placaInput = document.getElementById('placa');
+            placaInput.addEventListener('input', updateSuggestions); // Actualizar sugerencias al escribir
+            placaInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    ingresarVehiculo();
+                }
+            });
+
+            autoBtn.addEventListener('click', function() {
+                selectedType = 'auto';
+                autoBtn.classList.add('active');
+                camionetaBtn.classList.remove('active');
+                motoBtn.classList.remove('active');
+            });
+
+            camionetaBtn.addEventListener('click', function() {
+                selectedType = 'camioneta';
+                camionetaBtn.classList.add('active');
+                autoBtn.classList.remove('active');
+                motoBtn.classList.remove('active');
+            });
+
+            motoBtn.addEventListener('click', function() {
+                selectedType = 'moto';
+                motoBtn.classList.add('active');
+                autoBtn.classList.remove('active');
+                camionetaBtn.classList.remove('active');
+            });
+        };
+    </script>
+</body>
+</html>
