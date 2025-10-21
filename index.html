@@ -219,7 +219,7 @@
         const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
         const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}):(v.horaTexto||'');
         const left=document.createElement('div');
-        const plate=document.createElement('span'); plate.className='plate'; plate.textContent=${emoji} ${v.placa};
+        const plate=document.createElement('span'); plate.className='plate'; plate.textContent = emoji + ' ' + v.placa;
         const time=document.createElement('span'); time.className='time'; time.textContent=hora;
         left.appendChild(plate); left.appendChild(time);
         if(v.notas){const n=document.createElement('span'); n.className='note'; n.textContent=v.notas; left.appendChild(n);}
@@ -236,13 +236,13 @@
       });
     }
 
-    // ---- Util: formato "Xh Ym" ----
+    // ---- Util: formato "X h Y min" ----
     function formatHM(totalMin){
       const h=Math.floor(totalMin/60);
       const m=totalMin%60;
-      if(h<=0) return ${m} min;
-      if(m<=0) return ${h} h;
-      return ${h} h ${m} min;
+      if(h<=0) return m + ' min';
+      if(m<=0) return h + ' h';
+      return h + ' h ' + m + ' min';
     }
 
     // ---- Modal SALIDA ----
@@ -273,8 +273,8 @@
       const txtDur    =formatHM(min);
 
       exitTitle.textContent=item.placa.toUpperCase();
-      exitInfo.innerHTML=Entrada: ${txtEntrada}<br>Salida: ${txtSalida}<br>Tiempo: ${txtDur};
-      exitAmount.textContent=$${cobro};
+      exitInfo.innerHTML = 'Entrada: ' + txtEntrada + '<br>Salida: ' + txtSalida + '<br>Tiempo: ' + txtDur;
+      exitAmount.textContent = '$' + cobro;
       paymentInput.value=''; changeOutput.textContent='Vuelto: $0';
       exitModal.style.display='flex';
     }
@@ -282,7 +282,7 @@
     paymentInput.addEventListener('input',()=>{
       const pago=parseFloat(paymentInput.value)||0;
       const vuelto=pago-cobro;
-      changeOutput.textContent=Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'};
+      changeOutput.textContent = 'Vuelto: ' + (vuelto>=0 ? '$'+vuelto : 'Pago insuficiente');
     });
 
     confirmButton.addEventListener('click',async()=>{
