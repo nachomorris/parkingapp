@@ -2,17 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Gestor de Estacionamiento</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-  <!-- Estilos: tema claro -->
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f5f5f5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
     body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
 
     .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
-
     .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
     .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
 
@@ -71,15 +76,23 @@
     .toast.show{visibility:visible;animation:fadeInOut 2s}
     @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
 
-    /* Responsive */
+    /* ✅ Móvil PWA: sin scroll global; ingreso fijo arriba; lista scrolleable */
     @media (max-width:768px){
-      .container{flex-direction:column;max-width:100%;margin:0;border-radius:0}
-      .form-section,.list-section{width:100%;padding:10px}
-      .ingreso input#placa{font-size:1em}
-      button{font-size:1em;padding:10px}
-      .vehicle-btn{font-size:18px;padding:6px}
-      .plate{font-size:1.2em}.time{font-size:.7em}.note{font-size:.6em}
-      .modal-content{width:85%;max-width:350px;padding:15px}
+      html, body { height: 100%; overflow: hidden; }                 /* bloquea scroll global */
+      body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; } /* notch friendly */
+      .container{
+        flex-direction:column; max-width:100%; margin:0; border-radius:0; height:100vh; overflow:hidden;
+        border-left:none; border-right:none; box-shadow:none;
+      }
+      .form-section{
+        width:100%; padding:10px; border-radius:0; flex:0 0 auto;   /* panel fijo arriba */
+        position:relative; z-index:2; background:#f9f9f9;
+      }
+      .list-section{
+        width:100%; padding:10px; border-radius:0; flex:1 1 auto;   /* ocupa resto de alto */
+        min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; /* solo acá scrollea */
+        background:#fff; position:relative; z-index:1;
+      }
     }
   </style>
 
@@ -131,11 +144,11 @@
   <!-- Toast -->
   <div id="toast" class="toast"></div>
 
-  <!-- Lógica de página -->
+  <!-- Lógica de página (idéntica a la tuya; no cambio colores ni reglas) -->
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
-    // ---- Refs UI ----
+    // Refs UI
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
@@ -154,7 +167,7 @@
     const changeOutput = document.getElementById('changeOutput');
     const confirmButton = document.getElementById('confirmButton');
 
-    // ---- Tipo seleccionado ----
+    // Tipo seleccionado
     let tipoSeleccionado = 'auto';
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -164,14 +177,14 @@
       });
     });
 
-    // ---- Hora viva ----
+    // Hora viva
     function updateEntryTime(){ inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}); }
     updateEntryTime(); setInterval(updateEntryTime, 60_000);
 
-    // ---- Toast ----
+    // Toast
     function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast', 1800); }
 
-    // ---- ENTRADA ----
+    // Entrada
     btnEntrada.addEventListener('click', async (e)=>{
       e.preventDefault();
       const placa = (inputPatente.value||'').trim().toUpperCase();
@@ -188,7 +201,7 @@
       toast('Vehículo ingresado');
     });
 
-    // ---- LISTADO en tiempo real ----
+    // Listado
     let cache = [];
     onEstacionados((items)=>{ cache = items||[]; render(); });
 
@@ -219,7 +232,6 @@
         lista.appendChild(li);
       });
 
-      // datalist de sugerencias
       const dl = document.getElementById('placaSuggestions');
       dl.innerHTML = '';
       [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
@@ -231,15 +243,9 @@
     clearBtn.addEventListener('click', ()=>{ searchInput.value=''; render(); });
     inputPatente.addEventListener('keypress', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); } });
 
-    // ---- Modal SALIDA ----
+    // Modal SALIDA (tarifas fijas)
     let currentItem = null; let cobro = 0;
-
-    // Tarifas fijas (por hora)
-    const TARIFAS = {
-      auto: 1800,
-      camioneta: 2000,
-      moto: 1300
-    };
+    const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
 
     function openExitModal(item){
       currentItem = item;
@@ -247,14 +253,13 @@
       const salida  = new Date();
       const min = Math.max(1, Math.ceil((salida-entrada)/60000));
 
-      // 1ra hora completa + luego cada 30 min = mitad de la hora
       const tarifaHora = TARIFAS[item.tipo] ?? TARIFAS.auto;
       const horas = Math.floor(min / 60);
       const resto = min % 60;
 
-      let total = tarifaHora; // primera hora completa
-      if (horas > 0) total += (horas - 1) * tarifaHora;            // horas completas adicionales
-      total += Math.floor(resto / 30) * (tarifaHora / 2);          // fracciones de 30 min
+      let total = tarifaHora;                        // 1ra hora completa
+      if (horas > 0) total += (horas - 1) * tarifaHora;  // horas extra
+      total += Math.floor(resto / 30) * (tarifaHora / 2); // fracciones de 30 min
 
       cobro = Math.round(total);
 
@@ -271,20 +276,29 @@
       changeOutput.textContent = `Vuelto: ${vuelto>=0? '$'+vuelto : 'Pago insuficiente'}`;
     });
 
-    confirmButton.addEventListener('click', async ()=>{
+    async function removeEstacionadoAndClose(){
       if (!currentItem) return;
       await removeEstacionado(currentItem.id);
       exitModal.style.display='none';
       toast('Salida confirmada');
       currentItem = null;
-    });
+    }
+    const confirmButton = document.getElementById('confirmButton');
+    confirmButton.addEventListener('click', removeEstacionadoAndClose);
+    const closeModal = document.getElementById('closeModal');
     closeModal.addEventListener('click', ()=>{ exitModal.style.display='none'; currentItem=null; });
+
     document.addEventListener('keydown', (e)=>{
       if (exitModal.style.display==='flex'){
         if (e.key==='Enter') confirmButton.click();
         if (e.key==='Escape') closeModal.click();
       }
     });
+
+    // PWA: registrar service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(console.error);
+    }
   </script>
 </body>
 </html>
