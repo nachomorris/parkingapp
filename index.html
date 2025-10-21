@@ -6,7 +6,6 @@
   <title>Gestor de Estacionamiento</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-  <!-- Estilos: tema claro -->
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
     body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
@@ -14,16 +13,7 @@
     .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
 
     .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
-    .list-section{
-      width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0;
-      /* 👇 asegura que el último ítem no quede tapado */
-      padding-bottom: 48px;
-      position: relative;
-    }
-    /* espaciador visual al final (por si el SO/scroll deja muy pegado el último ítem) */
-    .list-section::after{
-      content:""; display:block; height:24px;
-    }
+    .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
 
     h2{color:#333;margin:0 0 10px 0;font-size:1.3em;text-transform:uppercase}
 
@@ -48,15 +38,13 @@
     .clear-filter-btn:hover{background:#d35400}
     .clear-filter-btn.active{display:block}
 
-    ul{list-style:none}
+    ul{list-style:none;padding-bottom:60px;} /* 👈 espacio final para no tapar el último vehículo */
     li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
 
     .in-parking{border-left-color:#4a90e2}
 
     .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
     .time{font-size:.8em;color:#666;margin-top:4px;display:block}
-    /* ⛔ se quita el "hs." automático */
-    /* .time::after{content:" hs."} */
     .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
 
     .table-header{display:none}
@@ -76,12 +64,10 @@
     .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
     .close-modal:hover{color:#e74c3c}
 
-    /* Toast */
     .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
     .toast.show{visibility:visible;animation:fadeInOut 2s}
     @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
 
-    /* Responsive */
     @media (max-width:768px){
       .container{flex-direction:column;max-width:100%;margin:0;border-radius:0}
       .form-section,.list-section{width:100%;padding:10px}
@@ -93,7 +79,6 @@
     }
   </style>
 
-  <!-- Firebase -->
   <script type="module" src="./firebase.js"></script>
 </head>
 <body>
@@ -118,16 +103,12 @@
 
     <div class="list-section">
       <h2>ESTACIONADOS: <span id="count">0</span></h2>
-      <!-- placeholder cambiado -->
       <input type="text" id="searchInput" placeholder="BUSCAR PATENTE">
-      <!-- se muestra sólo con texto -->
-      <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
-      <div class="table-header"></div>
+      <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
       <ul id="listaEstacionados"></ul>
     </div>
   </div>
 
-  <!-- Modal de salida -->
   <div id="exitModal" class="modal">
     <div class="modal-content">
       <span class="close-modal" id="closeModal">&times;</span>
@@ -140,22 +121,19 @@
     </div>
   </div>
 
-  <!-- Toast -->
   <div id="toast" class="toast"></div>
 
-  <!-- Lógica de página -->
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
-    // ---- Refs UI ----
     const inputPatente = document.getElementById('placa');
-    const inputNotas   = document.getElementById('notas');
-    const inputHora    = document.getElementById('entryTime');
-    const btnEntrada   = document.getElementById('btn-entrada');
-    const lista        = document.getElementById('listaEstacionados');
-    const countEl      = document.getElementById('count');
-    const searchInput  = document.getElementById('searchInput');
-    const clearBtn     = document.getElementById('clearFilterBtn');
+    const inputNotas = document.getElementById('notas');
+    const inputHora = document.getElementById('entryTime');
+    const btnEntrada = document.getElementById('btn-entrada');
+    const lista = document.getElementById('listaEstacionados');
+    const countEl = document.getElementById('count');
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearFilterBtn');
 
     const exitModal = document.getElementById('exitModal');
     const closeModal = document.getElementById('closeModal');
@@ -168,10 +146,6 @@
 
     // ---- Tipo seleccionado ----
     let tipoSeleccionado = 'auto';
-    const autoBtn = document.getElementById('autoBtn');
-    const camionetaBtn = document.getElementById('camionetaBtn');
-    const motoBtn = document.getElementById('motoBtn');
-
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
@@ -181,21 +155,19 @@
     });
 
     // ---- Hora viva ----
-    function updateEntryTime(){ inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}); }
-    updateEntryTime(); setInterval(updateEntryTime, 60_000);
+    function updateEntryTime(){
+      inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+    }
+    updateEntryTime();
+    setInterval(updateEntryTime, 60000);
 
     // ---- Toast ----
-    function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast', 1800); }
-
-    // ---- Mostrar/ocultar botón "Borrar filtro" ----
-    function toggleClearBtn(){
-      const hasText = (searchInput.value || '').trim().length > 0;
-      clearBtn.classList.toggle('active', hasText);
+    function toast(msg){
+      const t=document.getElementById('toast');
+      t.textContent=msg;
+      t.className='toast show';
+      setTimeout(()=>t.className='toast',1800);
     }
-    searchInput.addEventListener('input', ()=>{ toggleClearBtn(); render(); });
-    clearBtn.addEventListener('click', ()=>{ searchInput.value=''; toggleClearBtn(); render(); });
-    // estado inicial
-    toggleClearBtn();
 
     // ---- ENTRADA ----
     btnEntrada.addEventListener('click', async (e)=>{
@@ -210,114 +182,106 @@
         entradaISO: d.toISOString(),
         horaTexto: d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
-
-      // Reset UI + vuelve a AUTO preseleccionado
-      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
-      tipoSeleccionado = 'auto';
-      autoBtn.classList.add('active');
-      camionetaBtn.classList.remove('active');
-      motoBtn.classList.remove('active');
-
+      inputPatente.value='';
+      inputNotas.value='';
+      tipoSeleccionado='auto';
+      document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
+      document.querySelector('[data-tipo="auto"]').classList.add('active');
+      inputPatente.focus();
       toast('Vehículo ingresado');
     });
 
-    // ---- LISTADO en tiempo real ----
-    let cache = [];
-    onEstacionados((items)=>{ cache = items||[]; render(); });
+    // ---- LISTADO ----
+    let cache=[];
+    onEstacionados((items)=>{ cache=items||[]; render(); });
 
     function render(){
-      const term = (searchInput.value||'').trim().toUpperCase();
-      const filtered = term ? cache.filter(v => (v.placa||'').toUpperCase().includes(term)) : cache;
-
-      lista.innerHTML = '';
-      countEl.textContent = cache.length;
-
+      const term=(searchInput.value||'').trim().toUpperCase();
+      const filtered=term?cache.filter(v=>(v.placa||'').toUpperCase().includes(term)):cache;
+      lista.innerHTML='';
+      countEl.textContent=cache.length;
       filtered.forEach(v=>{
-        const li = document.createElement('li');
-        li.className = 'in-parking';
-
-        const emoji = v.tipo==='camioneta' ? '🚐' : (v.tipo==='moto' ? '🏍️' : '🚗');
-        const hora  = v.entradaISO ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : (v.horaTexto||'');
-
-        const left = document.createElement('div');
-        const plate = document.createElement('span'); plate.className='plate'; plate.textContent = `${emoji} ${v.placa}`;
-        const time  = document.createElement('span'); time.className='time'; time.textContent = hora;
+        const li=document.createElement('li');
+        li.className='in-parking';
+        const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
+        const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}):(v.horaTexto||'');
+        const left=document.createElement('div');
+        const plate=document.createElement('span'); plate.className='plate'; plate.textContent=`${emoji} ${v.placa}`;
+        const time=document.createElement('span'); time.className='time'; time.textContent=hora;
         left.appendChild(plate); left.appendChild(time);
-        if (v.notas){ const n=document.createElement('span'); n.className='note'; n.textContent=v.notas; left.appendChild(n); }
-
-        const del = document.createElement('button'); del.className='delete-btn'; del.textContent='SALIDA';
-        del.addEventListener('click', ()=>openExitModal(v));
-
+        if(v.notas){const n=document.createElement('span'); n.className='note'; n.textContent=v.notas; left.appendChild(n);}
+        const del=document.createElement('button'); del.className='delete-btn'; del.textContent='SALIDA';
+        del.addEventListener('click',()=>openExitModal(v));
         li.appendChild(left); li.appendChild(del);
         lista.appendChild(li);
       });
+
+      const dl=document.getElementById('placaSuggestions');
+      dl.innerHTML='';
+      [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
+        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
+      });
     }
 
-    // ---- Util: formato "X h Y min" ----
-    function formatHM(totalMin){
-      const h = Math.floor(totalMin/60);
-      const m = totalMin%60;
-      if (h <= 0) return `${m} min`;
-      if (m <= 0) return `${h} h`;
-      return `${h} h ${m} min`;
+    function toggleClearBtn(){
+      const hasText=(searchInput.value||'').length>0;
+      clearBtn.classList.toggle('active',hasText);
     }
+    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
+    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
+    toggleClearBtn();
 
     // ---- Modal SALIDA ----
-    let currentItem = null; let cobro = 0;
-
-    // Tarifas fijas (por hora)
-    const TARIFAS = {
-      auto: 1800,
-      camioneta: 2000,
-      moto: 1300
-    };
+    let currentItem=null; let cobro=0;
+    const TARIFAS={auto:1800,camioneta:2000,moto:1300};
 
     function openExitModal(item){
-      currentItem = item;
-      const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
-      const salida  = new Date();
-      const min = Math.max(1, Math.ceil((salida-entrada) / 60000));
-
-      // 1ra hora completa + luego cada 30 min = mitad de la hora
-      const tarifaHora = TARIFAS[item.tipo] ?? TARIFAS.auto;
-      const horas = Math.floor(min / 60);
-      const resto = min % 60;
-
-      let total = tarifaHora; // primera hora completa
-      if (horas > 0) total += (horas - 1) * tarifaHora;   // horas completas adicionales
-      total += Math.floor(resto / 30) * (tarifaHora / 2); // fracciones de 30 min
-
-      cobro = Math.round(total);
-
-      exitTitle.textContent = item.placa.toUpperCase();
-      // ⛔ se quitan los "hs." y se muestra duración en h/min
-      const txtEntrada = entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-      const txtSalida  = salida .toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-      const txtDur    = formatHM(min);
-      exitInfo.innerHTML = `Entrada: ${txtEntrada}<br>Salida: ${txtSalida}<br>Tiempo: ${txtDur}`;
-      exitAmount.textContent = `$${cobro}`;
+      currentItem=item;
+      const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
+      const salida=new Date();
+      const min=Math.max(1,Math.ceil((salida-entrada)/60000));
+      const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
+      const horas=Math.floor(min/60);
+      const resto=min%60;
+      let total=tarifaHora;
+      if(horas>0) total+=(horas-1)*tarifaHora;
+      total+=Math.floor(resto/30)*(tarifaHora/2);
+      cobro=Math.round(total);
+      const horasTxt=`${horas}h ${resto}m`;
+      exitTitle.textContent=item.placa.toUpperCase();
+      exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}<br>Tiempo: ${horasTxt}`;
+      exitAmount.textContent=`$${cobro}`;
       paymentInput.value=''; changeOutput.textContent='Vuelto: $0';
       exitModal.style.display='flex';
     }
 
-    paymentInput.addEventListener('input', ()=>{
-      const pago = parseFloat(paymentInput.value)||0;
-      const vuelto = pago - cobro;
-      changeOutput.textContent = `Vuelto: ${vuelto>=0 ? '$'+vuelto : 'Pago insuficiente'}`;
+    paymentInput.addEventListener('input',()=>{
+      const pago=parseFloat(paymentInput.value)||0;
+      const vuelto=pago-cobro;
+      changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;
     });
 
-    confirmButton.addEventListener('click', async ()=>{
-      if (!currentItem) return;
+    confirmButton.addEventListener('click',async()=>{
+      if(!currentItem)return;
       await removeEstacionado(currentItem.id);
       exitModal.style.display='none';
       toast('Salida confirmada');
-      currentItem = null;
+      currentItem=null;
     });
-    closeModal.addEventListener('click', ()=>{ exitModal.style.display='none'; currentItem=null; });
-    document.addEventListener('keydown', (e)=>{
-      if (exitModal.style.display==='flex'){
-        if (e.key==='Enter') confirmButton.click();
-        if (e.key==='Escape') closeModal.click();
+    closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
+
+    document.addEventListener('keydown',(e)=>{
+      if(exitModal.style.display==='flex'){
+        if(e.key==='Enter')confirmButton.click();
+        if(e.key==='Escape')closeModal.click();
+      }
+    });
+
+    // ---- ENTER para ingresar vehículo ----
+    inputPatente.addEventListener('keypress',(e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        btnEntrada.click();
       }
     });
   </script>
