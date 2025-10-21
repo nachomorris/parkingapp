@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestor de Estacionamiento</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos: mantengo tu look & feel -->
   <style>
-    /* ---- Tus estilos (idénticos) ---- */
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
     body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
     body.dark-mode{background:#3a3f44;color:#fff}
@@ -94,6 +95,7 @@
     }
   </style>
 
+  <!-- Tu módulo Firebase (YA debe estar apuntando a /estacionados) -->
   <script type="module" src="./firebase.js"></script>
 </head>
 <body>
@@ -128,7 +130,7 @@
     </div>
   </div>
 
-  <!-- Modal -->
+  <!-- Modal de salida -->
   <div id="exitModal" class="modal">
     <div class="modal-content">
       <span class="close-modal" id="closeModal">&times;</span>
@@ -141,8 +143,10 @@
     </div>
   </div>
 
+  <!-- Toast -->
   <div id="toast" class="toast"></div>
 
+  <!-- Lógica de página: Firebase + UI -->
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
@@ -197,7 +201,7 @@
     // ---- Toast ----
     function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast', 1800); }
 
-    // ---- ENTRADA (Firebase) ----
+    // ---- ENTRADA (escribe en /estacionados) ----
     btnEntrada.addEventListener('click', async (e)=>{
       e.preventDefault();
       const placa = (inputPatente.value||'').trim().toUpperCase();
@@ -214,7 +218,7 @@
       toast('Vehículo ingresado');
     });
 
-    // ---- LISTADO en tiempo real ----
+    // ---- LISTADO en tiempo real (lee de /estacionados) ----
     let cache = [];
     onEstacionados((items)=>{ cache = items||[]; render(); });
 
@@ -257,7 +261,7 @@
     clearBtn.addEventListener('click', ()=>{ searchInput.value=''; render(); });
     inputPatente.addEventListener('keypress', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); } });
 
-    // ---- Modal SALIDA (por ahora elimina en Firebase) ----
+    // ---- Modal SALIDA (por ahora: elimina en Firebase) ----
     let currentItem = null; let cobro = 0;
     function openExitModal(item){
       currentItem = item;
@@ -265,7 +269,8 @@
       const salida  = new Date();
       const min = Math.max(1, Math.ceil((salida-entrada)/60000));
 
-      const tarifaHora = item.tipo==='moto'?3 : item.tipo==='camioneta'?7 : 5; // simple por ahora
+      // cálculo simple (podemos tomar desde config.html más adelante)
+      const tarifaHora = item.tipo==='moto'?3 : item.tipo==='camioneta'?7 : 5;
       const horas = Math.floor(min/60); const resto = min%60;
       let total = tarifaHora; if(horas>0) total += (horas-1)*tarifaHora; total += Math.floor(resto/30)*(tarifaHora/2);
       cobro = Math.round(total);
@@ -291,13 +296,11 @@
       toast('Salida confirmada');
       currentItem = null;
     });
-    document.getElementById('closeModal').addEventListener('click', ()=>{
-      exitModal.style.display='none'; currentItem=null;
-    });
+    closeModal.addEventListener('click', ()=>{ exitModal.style.display='none'; currentItem=null; });
     document.addEventListener('keydown', (e)=>{
       if (exitModal.style.display==='flex'){
         if (e.key==='Enter') confirmButton.click();
-        if (e.key==='Escape') document.getElementById('closeModal').click();
+        if (e.key==='Escape') closeModal.click();
       }
     });
   </script>
