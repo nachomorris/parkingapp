@@ -1,892 +1,321 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Asegura responsividad -->
-    <title>Gestor de Estacionamiento</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Roboto', sans-serif;
-            transition: all 0.3s ease;
-        }
-        body {
-            background: #f5f5f5;
-            color: #333;
-            min-height: 100vh;
-            padding: 10px; /* Menos padding en móviles */
-            position: relative;
-        }
-        body.dark-mode {
-            background: #3a3f44;
-            color: #ffffff;
-        }
-        .theme-config {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px; /* Menos gap en móviles */
-            z-index: 1000;
-            border-radius: 8px;
-        }
-        .config-link {
-            padding: 6px 10px;
-            background: #ffffff;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            text-decoration: none;
-            color: #333;
-            font-size: 12px; /* Tamaño reducido para móviles */
-            cursor: pointer;
-        }
-        .config-link.dark-mode {
-            background: #2b2e33;
-            border-color: #555;
-            color: #ffffff;
-        }
-        .config-link:hover {
-            background: #f0f0f0;
-        }
-        .config-link.dark-mode:hover {
-            background: #3a3f44;
-        }
-        .theme-toggle {
-            width: 36px; /* Menos ancho en móviles */
-            height: 36px;
-            font-size: 20px; /* Icono más pequeño */
-            background: transparent;
-            border: 1px solid #ccc;
-            border-radius: 50%;
-            cursor: pointer;
-            color: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .theme-toggle.dark-mode {
-            border-color: #555;
-            color: #ffffff;
-        }
-        .theme-toggle:hover {
-            background: #ddd;
-        }
-        .theme-toggle.dark-mode:hover {
-            background: #444;
-        }
-        .container {
-            display: flex;
-            max-width: 1000px;
-            margin: 0 auto;
-            background: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            position: relative;
-            z-index: 1;
-        }
-        .container.dark-mode {
-            background: #2b2e33;
-            border-color: #555;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-        }
-        .form-section {
-            width: 40%;
-            padding: 15px; /* Menos padding en móviles */
-            background: #f9f9f9;
-            border-radius: 8px 0 0 8px;
-        }
-        .form-section.dark-mode {
-            background: #3a3f44;
-        }
-        .list-section {
-            width: 60%;
-            padding: 15px; /* Menos padding en móviles */
-            background: #ffffff;
-            border-radius: 0 8px 8px 0;
-        }
-        .list-section.dark-mode {
-            background: #2b2e33;
-        }
-        h2 {
-            color: #333;
-            margin: 0 0 10px 0;
-            font-size: 1.3em; /* Reducido para móviles */
-            text-transform: uppercase;
-        }
-        .dark-mode h2 {
-            color: #ffffff;
-        }
-        .ingreso {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .ingreso input#placa {
-            font-size: 1.1em; /* Reducido para móviles */
-            padding: 10px; /* Menos padding */
-        }
-        .ingreso .vehicle-buttons {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 8px; /* Menos margen en móviles */
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #fff;
-            color: #333;
-            font-size: 14px;
-        }
-        .dark-mode input {
-            border-color: #555;
-            background: #3a3f44;
-            color: #ffffff;
-        }
-        input:focus {
-            outline: none;
-            border-color: #4a90e2;
-            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
-        }
-        .dark-mode input:focus {
-            border-color: #7f8c8d;
-            box-shadow: 0 0 5px rgba(127, 140, 141, 0.5);
-        }
-        button {
-            width: 100%;
-            padding: 12px; /* Menos padding en móviles */
-            background: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.2em; /* Reducido para móviles */
-        }
-        button:hover {
-            background: #357abd;
-        }
-        .vehicle-btn {
-            flex: 1;
-            padding: 8px; /* Menos padding en móviles */
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 20px; /* Icono más pequeño */
-            text-align: center;
-            background: transparent;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-            margin: 0 4px; /* Menos margen en móviles */
-        }
-        .dark-mode .vehicle-btn {
-            border-color: #555;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        }
-        .vehicle-btn.active {
-            border: 3px solid #4a90e2;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .dark-mode .vehicle-btn.active {
-            border-color: #7f8c8d;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
-        .vehicle-btn:hover {
-            border-color: #95a5a6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-        }
-        .dark-mode .vehicle-btn:hover {
-            border-color: #95a5a6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-        }
-        .delete-btn {
-            width: auto;
-            padding: 6px 12px; /* Menos padding en móviles */
-            background: #e74c3c;
-            border-radius: 8px;
-            font-size: 16px; /* Reducido para móviles */
-            align-self: center;
-            text-transform: uppercase;
-        }
-        .delete-btn:hover {
-            background: #c0392b;
-        }
-        .clear-filter-btn {
-            width: 100%;
-            padding: 8px;
-            background: #e67e22;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px; /* Reducido para móviles */
-            display: none;
-        }
-        .clear-filter-btn:hover {
-            background: #d35400;
-        }
-        .clear-filter-btn.active {
-            display: block;
-        }
-        ul {
-            list-style: none;
-        }
-        li {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px; /* Menos padding en móviles */
-            margin-bottom: 8px; /* Menos margen en móviles */
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-            border-left: 4px solid #4a90e2;
-            border-radius: 8px;
-            align-items: center;
-        }
-        .dark-mode li {
-            background: #3a3f44;
-            border-color: #555;
-            border-left-color: #7f8c8d;
-        }
-        .in-parking {
-            border-left-color: #4a90e2;
-        }
-        .dark-mode .in-parking {
-            border-left-color: #7f8c8d;
-        }
-        .used {
-            border-left-color: #f1c40f;
-        }
-        .dark-mode .used {
-            border-left-color: #f39c12;
-        }
-        .plate {
-            font-size: 1.5em; /* Reducido para móviles */
-            font-weight: bold;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 4px; /* Menos gap en móviles */
-        }
-        .dark-mode .plate {
-            color: #ffffff;
-        }
-        .time {
-            font-size: 0.8em; /* Reducido para móviles */
-            color: #666;
-            margin-top: 4px; /* Menos margen en móviles */
-            display: block;
-        }
-        .dark-mode .time {
-            color: #ffffff;
-        }
-        .time::after {
-            content: " hs.";
-        }
-        .note {
-            font-size: 0.7em; /* Reducido para móviles */
-            color: #e74c3c;
-            margin-top: 4px; /* Menos margen en móviles */
-            word-break: break-word;
-            display: block;
-        }
-        .dark-mode .note {
-            color: #ffffff;
-        }
-        .table-header {
-            display: none;
-        }
-        #searchInput {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 8px; /* Menos margen en móviles */
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #fff;
-            color: #333;
-            font-size: 14px;
-        }
-        .dark-mode #searchInput {
-            border-color: #555;
-            background: #3a3f44;
-            color: #ffffff;
-        }
-        #searchInput:focus {
-            outline: none;
-            border-color: #4a90e2;
-            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
-        }
-        .dark-mode #searchInput:focus {
-            border-color: #7f8c8d;
-            box-shadow: 0 0 5px rgba(127, 140, 141, 0.5);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor de Estacionamiento</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-        /* Estilos para el modal de salida */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1001;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-            align-items: center;
-            justify-content: center;
-        }
+  <!-- ⭐ Mantengo tus estilos tal cual -->
+  <style>
+    /* ==== TUS ESTILOS EXISTENTES (idénticos) ==== */
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
+    body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
+    body.dark-mode{background:#3a3f44;color:#fff}
+    .theme-config{position:fixed;top:10px;right:10px;display:flex;align-items:center;gap:8px;z-index:1000;border-radius:8px}
+    .config-link{padding:6px 10px;background:#fff;border:1px solid #ccc;border-radius:8px;text-decoration:none;color:#333;font-size:12px;cursor:pointer}
+    .config-link.dark-mode{background:#2b2e33;border-color:#555;color:#fff}
+    .config-link:hover{background:#f0f0f0}
+    .config-link.dark-mode:hover{background:#3a3f44}
+    .theme-toggle{width:36px;height:36px;font-size:20px;background:transparent;border:1px solid #ccc;border-radius:50%;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center}
+    .theme-toggle.dark-mode{border-color:#555;color:#fff}
+    .theme-toggle:hover{background:#ddd}
+    .theme-toggle.dark-mode:hover{background:#444}
+    .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
+    .container.dark-mode{background:#2b2e33;border-color:#555;box-shadow:0 2px 5px rgba(0,0,0,.3)}
+    .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
+    .form-section.dark-mode{background:#3a3f44}
+    .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
+    .list-section.dark-mode{background:#2b2e33}
+    h2{color:#333;margin:0 0 10px 0;font-size:1.3em;text-transform:uppercase}
+    .dark-mode h2{color:#fff}
+    .ingreso{display:flex;flex-direction:column;gap:10px}
+    .ingreso input#placa{font-size:1.1em;padding:10px}
+    .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
+    input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
+    .dark-mode input{border-color:#555;background:#3a3f44;color:#fff}
+    input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
+    .dark-mode input:focus{border-color:#7f8c8d;box-shadow:0 0 5px rgba(127,140,141,.5)}
+    button{width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.2em}
+    button:hover{background:#357abd}
+    .vehicle-btn{flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:20px;text-align:center;background:transparent;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 4px}
+    .dark-mode .vehicle-btn{border-color:#555;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+    .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 4px 8px rgba(0,0,0,.2)}
+    .dark-mode .vehicle-btn.active{border-color:#7f8c8d;box-shadow:0 4px 8px rgba(0,0,0,.3)}
+    .vehicle-btn:hover{border-color:#95a5a6;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+    .dark-mode .vehicle-btn:hover{border-color:#95a5a6;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+    .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
+    .delete-btn:hover{background:#c0392b}
+    .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
+    .clear-filter-btn:hover{background:#d35400}
+    .clear-filter-btn.active{display:block}
+    ul{list-style:none}
+    li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
+    .dark-mode li{background:#3a3f44;border-color:#555;border-left-color:#7f8c8d}
+    .in-parking{border-left-color:#4a90e2}
+    .dark-mode .in-parking{border-left-color:#7f8c8d}
+    .used{border-left-color:#f1c40f}
+    .dark-mode .used{border-left-color:#f39c12}
+    .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
+    .dark-mode .plate{color:#fff}
+    .time{font-size:.8em;color:#666;margin-top:4px;display:block}
+    .dark-mode .time{color:#fff}
+    .time::after{content:" hs."}
+    .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
+    .dark-mode .note{color:#fff}
+    .table-header{display:none}
+    #searchInput{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
+    .dark-mode #searchInput{border-color:#555;background:#3a3f44;color:#fff}
+    #searchInput:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
+    .dark-mode #searchInput:focus{border-color:#7f8c8d;box-shadow:0 0 5px rgba(127,140,141,.5)}
+    .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
+    .modal-content{background:#fefefe;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
+    .dark-mode .modal-content{background:#2b2e33;color:#fff}
+    .modal-content h3{font-size:1.8em;margin-bottom:10px;text-transform:uppercase}
+    .modal-content p{margin-bottom:10px;font-size:1em}
+    .modal-content .amount{font-size:1.8em;font-weight:700;margin-bottom:10px}
+    .modal-content input{width:100%;padding:8px;margin-bottom:10px;font-size:1em}
+    .modal-content .change{font-weight:700;margin-bottom:10px;font-size:1em}
+    .modal-content button{padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.1em}
+    .modal-content button:hover{background:#357abd}
+    .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
+    .dark-mode .close-modal{color:#fff}
+    .close-modal:hover{color:#e74c3c}
+    .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
+    .toast.show{visibility:visible;animation:fadeInOut 2s}
+    @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
+    @media (max-width:768px){
+      .container{flex-direction:column;max-width:100%;margin:0;border-radius:0}
+      .form-section,.list-section{width:100%;padding:10px}
+      .form-section{border-radius:0}.list-section{border-radius:0}
+      .ingreso input#placa{font-size:1em}button{font-size:1em;padding:10px}
+      .vehicle-btn{font-size:18px;padding:6px}.delete-btn{font-size:14px;padding:4px 10px}
+      .plate{font-size:1.2em}.time{font-size:.7em}.note{font-size:.6em}
+      .modal-content{width:85%;max-width:350px;padding:15px}
+      .modal-content h3{font-size:1.5em}.modal-content .amount{font-size:1.5em}
+      .theme-config{top:5px;right:5px}.config-link{font-size:10px;padding:4px 8px}
+      .theme-toggle{width:30px;height:30px;font-size:16px}
+    }
+  </style>
 
-        .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px; /* Menos padding en móviles */
-            border: 1px solid #888;
-            width: 90%; /* Más ancho relativo en móviles */
-            max-width: 400px; /* Reducido para móviles */
-            border-radius: 8px;
-            text-align: center;
-            position: relative;
-        }
-
-        .dark-mode .modal-content {
-            background-color: #2b2e33;
-            color: #ffffff;
-        }
-
-        .modal-content h3 {
-            font-size: 1.8em; /* Reducido para móviles */
-            margin-bottom: 10px; /* Menos margen en móviles */
-            text-transform: uppercase;
-        }
-
-        .modal-content p {
-            margin-bottom: 10px; /* Menos margen en móviles */
-            font-size: 1em; /* Reducido para móviles */
-        }
-
-        .modal-content .amount {
-            font-size: 1.8em; /* Reducido para móviles */
-            font-weight: bold;
-            margin-bottom: 10px; /* Menos margen en móviles */
-        }
-
-        .modal-content input {
-            width: 100%;
-            padding: 8px; /* Menos padding en móviles */
-            margin-bottom: 10px; /* Menos margen en móviles */
-            font-size: 1em; /* Reducido para móviles */
-        }
-
-        .modal-content .change {
-            font-weight: bold;
-            margin-bottom: 10px; /* Menos margen en móviles */
-            font-size: 1em; /* Reducido para móviles */
-        }
-
-        .modal-content button {
-            padding: 10px 20px; /* Menos padding en móviles */
-            background: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1em; /* Reducido para móviles */
-        }
-
-        .modal-content button:hover {
-            background: #357abd;
-        }
-
-        /* Botón de cerrar modal */
-        .close-modal {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 20px; /* Reducido para móviles */
-            cursor: pointer;
-            color: #333;
-        }
-        .dark-mode .close-modal {
-            color: #ffffff;
-        }
-        .close-modal:hover {
-            color: #e74c3c;
-        }
-
-        /* Estilo para el toast */
-        .toast {
-            visibility: hidden;
-            min-width: 200px; /* Reducido para móviles */
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 10px; /* Menos padding en móviles */
-            position: fixed;
-            z-index: 1002;
-            left: 50%;
-            bottom: 20px; /* Menos margen en móviles */
-            transform: translateX(-50%);
-            font-size: 14px; /* Reducido para móviles */
-        }
-        .toast.show {
-            visibility: visible;
-            animation: fadeInOut 2s;
-        }
-        @keyframes fadeInOut {
-            0% { opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
-        /* Media Queries para móviles */
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-                max-width: 100%; /* Ajuste completo al ancho */
-                margin: 0;
-                border-radius: 0;
-            }
-            .form-section, .list-section {
-                width: 100%; /* Una columna */
-                padding: 10px;
-            }
-            .form-section {
-                border-radius: 0;
-            }
-            .list-section {
-                border-radius: 0;
-            }
-            .ingreso input#placa {
-                font-size: 1em; /* Más pequeño en móviles */
-            }
-            button {
-                font-size: 1em; /* Más pequeño en móviles */
-                padding: 10px;
-            }
-            .vehicle-btn {
-                font-size: 18px; /* Iconos más pequeños */
-                padding: 6px;
-            }
-            .delete-btn {
-                font-size: 14px; /* Más pequeño en móviles */
-                padding: 4px 10px;
-            }
-            .plate {
-                font-size: 1.2em; /* Más pequeño en móviles */
-            }
-            .time {
-                font-size: 0.7em; /* Más pequeño en móviles */
-            }
-            .note {
-                font-size: 0.6em; /* Más pequeño en móviles */
-            }
-            .modal-content {
-                width: 85%; /* Más ancho relativo */
-                max-width: 350px; /* Más pequeño en móviles */
-                padding: 15px;
-            }
-            .modal-content h3 {
-                font-size: 1.5em;
-            }
-            .modal-content .amount {
-                font-size: 1.5em;
-            }
-            .theme-config {
-                top: 5px;
-                right: 5px;
-            }
-            .config-link {
-                font-size: 10px; /* Más pequeño en móviles */
-                padding: 4px 8px;
-            }
-            .theme-toggle {
-                width: 30px;
-                height: 30px;
-                font-size: 16px;
-            }
-        }
-    </style>
+  <!-- Carga del módulo Firebase (tu archivo) -->
+  <script type="module" src="./firebase.js"></script>
 </head>
 <body>
-    <div class="theme-config">
-        <a href="config.html" class="config-link" target="_blank">Configuración</a>
-        <button class="theme-toggle" onclick="toggleTheme()">🌞</button>
-    </div>
-    <div class="container">
-        <div class="form-section">
-            <section class="ingreso">
-                <h2>INGRESO DE VEHÍCULO</h2>
-                <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off">
-                <input type="text" id="entryTime" value="" readonly>
-                <datalist id="placaSuggestions"></datalist>
-                <input type="text" id="notas" placeholder="Notas">
-                <div class="vehicle-buttons">
-                    <button id="autoBtn" class="vehicle-btn active">🚗</button>
-                    <button id="camionetaBtn" class="vehicle-btn">🚐</button>
-                    <button id="motoBtn" class="vehicle-btn">🏍️</button>
-                </div>
-                <button onclick="ingresarVehiculo()">ENTRADA</button>
-            </section>
+  <div class="theme-config">
+    <a href="config.html" class="config-link" target="_blank">Configuración</a>
+    <button class="theme-toggle" id="themeToggle">🌞</button>
+  </div>
+
+  <div class="container">
+    <div class="form-section">
+      <section class="ingreso">
+        <h2>INGRESO DE VEHÍCULO</h2>
+        <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off">
+        <input type="text" id="entryTime" value="" readonly>
+        <datalist id="placaSuggestions"></datalist>
+        <input type="text" id="notas" placeholder="Notas">
+        <div class="vehicle-buttons">
+          <button id="autoBtn" class="vehicle-btn active" data-tipo="auto">🚗</button>
+          <button id="camionetaBtn" class="vehicle-btn" data-tipo="camioneta">🚐</button>
+          <button id="motoBtn" class="vehicle-btn" data-tipo="moto">🏍️</button>
         </div>
-        <div class="list-section">
-            <h2>ESTACIONADOS: <span id="count">0</span></h2>
-            <input type="text" id="searchInput" placeholder="Buscar placa...">
-            <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
-            <div class="table-header"></div>
-            <ul id="listaEstacionados"></ul>
-        </div>
+        <button id="btn-entrada">ENTRADA</button>
+      </section>
     </div>
 
-    <!-- Modal para salida de vehículo -->
-    <div id="exitModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="document.getElementById('exitModal').style.display='none'">&times;</span>
-            <h3 id="exitTitle"></h3>
-            <p id="exitInfo"></p>
-            <p class="amount" id="exitAmount"></p>
-            <input type="number" id="paymentInput" placeholder="Monto pagado ($)" oninput="calculateChange()">
-            <p class="change" id="changeOutput">Vuelto: $0</p>
-            <button id="confirmButton" onclick="confirmExit()">Confirmar</button>
-        </div>
+    <div class="list-section">
+      <h2>ESTACIONADOS: <span id="count">0</span></h2>
+      <input type="text" id="searchInput" placeholder="Buscar placa...">
+      <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
+      <div class="table-header"></div>
+      <ul id="listaEstacionados"></ul>
     </div>
+  </div>
 
-    <!-- Toast para feedback visual -->
-    <div id="toast" class="toast"></div>
-<script type="module" src="./firebase.js"></script>
-    <script>
-        console.log('Script cargado');
+  <!-- Modal salida -->
+  <div id="exitModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal" id="closeModal">&times;</span>
+      <h3 id="exitTitle"></h3>
+      <p id="exitInfo"></p>
+      <p class="amount" id="exitAmount"></p>
+      <input type="number" id="paymentInput" placeholder="Monto pagado ($)">
+      <p class="change" id="changeOutput">Vuelto: $0</p>
+      <button id="confirmButton">Confirmar</button>
+    </div>
+  </div>
 
-        // Cargar tarifas desde localStorage o usar valores por defecto
-        let tarifas = JSON.parse(localStorage.getItem('tarifas')) || { auto: 5, moto: 3, camioneta: 7 };
-        let estacionados = JSON.parse(localStorage.getItem('estacionados')) || [];
-        let selectedType = 'auto'; // Por defecto, Auto está preseleccionado
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
 
-        // Lista de placas frecuentes (puedes personalizarla)
-        let frequentPlates = ['GG 123 HJ', 'HH 456 KL', 'JJ 789 MN'];
+  <!-- Lógica de página: Firebase + UI -->
+  <script type="module">
+    import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
-        // Cargar tema desde localStorage o usar modo claro por defecto
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            document.querySelector('.theme-toggle').textContent = '🌙'; // Luna para modo oscuro
-        }
+    // --- Tema ---
+    const themeToggle = document.getElementById('themeToggle');
+    const container = document.querySelector('.container');
+    const configLinks = document.querySelectorAll('.config-link');
+    if (localStorage.getItem('theme') === 'dark') enableDark(true);
+    themeToggle.addEventListener('click', () => enableDark(!document.body.classList.contains('dark-mode')));
+    function enableDark(on){
+      document.body.classList.toggle('dark-mode', on);
+      themeToggle.classList.toggle('dark-mode', on);
+      container.classList.toggle('dark-mode', on);
+      configLinks.forEach(a=>a.classList.toggle('dark-mode', on));
+      themeToggle.textContent = on ? '🌙' : '🌞';
+      localStorage.setItem('theme', on ? 'dark' : 'light');
+    }
 
-        let currentExitIndex = -1; // Índice del vehículo en salida
-        let cobro = 0; // Variable para guardar el cobro
+    // --- Refs UI ---
+    const inputPatente = document.getElementById('placa');
+    const inputNotas   = document.getElementById('notas');
+    const inputHora    = document.getElementById('entryTime');
+    const btnEntrada   = document.getElementById('btn-entrada');
+    const lista        = document.getElementById('listaEstacionados');
+    const countEl      = document.getElementById('count');
+    const searchInput  = document.getElementById('searchInput');
+    const clearBtn     = document.getElementById('clearFilterBtn');
 
-        function toggleTheme() {
-            const body = document.body;
-            const themeToggle = document.querySelector('.theme-toggle');
-            const container = document.querySelector('.container');
-            const formSection = document.querySelector('.form-section');
-            const listSection = document.querySelector('.list-section');
-            const inputs = document.querySelectorAll('input, select');
-            const vehicleButtons = document.querySelectorAll('.vehicle-btn');
-            const deleteButtons = document.querySelectorAll('.delete-btn');
-            const clearFilterBtn = document.querySelector('.clear-filter-btn');
-            const lis = document.querySelectorAll('li');
-            const modalContent = document.querySelector('.modal-content');
+    const exitModal = document.getElementById('exitModal');
+    const closeModal = document.getElementById('closeModal');
+    const exitTitle = document.getElementById('exitTitle');
+    const exitInfo = document.getElementById('exitInfo');
+    const exitAmount = document.getElementById('exitAmount');
+    const paymentInput = document.getElementById('paymentInput');
+    const changeOutput = document.getElementById('changeOutput');
+    const confirmButton = document.getElementById('confirmButton');
 
-            if (body.classList.contains('dark-mode')) {
-                body.classList.remove('dark-mode');
-                themeToggle.textContent = '🌞'; // Sol para modo claro
-                container.classList.remove('dark-mode');
-                formSection.classList.remove('dark-mode');
-                listSection.classList.remove('dark-mode');
-                inputs.forEach(input => input.classList.remove('dark-mode'));
-                vehicleButtons.forEach(btn => btn.classList.remove('dark-mode'));
-                deleteButtons.forEach(btn => btn.classList.remove('dark-mode'));
-                clearFilterBtn.classList.remove('dark-mode');
-                lis.forEach(li => li.classList.remove('dark-mode'));
-                if (modalContent) modalContent.classList.remove('dark-mode');
-                localStorage.setItem('theme', 'light');
-            } else {
-                body.classList.add('dark-mode');
-                themeToggle.textContent = '🌙'; // Luna para modo oscuro
-                container.classList.add('dark-mode');
-                formSection.classList.add('dark-mode');
-                listSection.classList.add('dark-mode');
-                inputs.forEach(input => input.classList.add('dark-mode'));
-                vehicleButtons.forEach(btn => btn.classList.add('dark-mode'));
-                deleteButtons.forEach(btn => btn.classList.add('dark-mode'));
-                clearFilterBtn.classList.add('dark-mode');
-                lis.forEach(li => li.classList.add('dark-mode'));
-                if (modalContent) modalContent.classList.add('dark-mode');
-                localStorage.setItem('theme', 'dark');
-            }
-            renderizarListas(); // Re-renderizar para aplicar el tema
-            updateSuggestions(); // Actualizar sugerencias con el tema
-        }
+    // --- Tipo seleccionado ---
+    let tipoSeleccionado = 'auto';
+    document.querySelectorAll('[data-tipo]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
+        btn.classList.add('active');
+        tipoSeleccionado = btn.dataset.tipo;
+      });
+    });
 
-        function ingresarVehiculo() {
-            console.log('Intentando ingresar vehículo');
-            const placaInput = document.getElementById('placa');
-            const notasInput = document.getElementById('notas');
-            const entryTimeInput = document.getElementById('entryTime');
+    // --- Hora en vivo ---
+    function updateEntryTime(){
+      inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+    }
+    updateEntryTime(); setInterval(updateEntryTime, 60_000);
 
-            if (!placaInput || !notasInput || !entryTimeInput) {
-                console.log('Error: Elementos no encontrados', { placaInput, notasInput, entryTimeInput });
-                return;
-            }
+    // --- Toast ---
+    function toast(msg){
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.className = 'toast show';
+      setTimeout(()=>t.className='toast', 1800);
+    }
 
-            const placa = placaInput.value.trim().toUpperCase();
-            const notas = notasInput.value.trim();
-            const tipo = selectedType;
-            const entrada = new Date().toISOString();
-            const hora = entryTimeInput.value; // Usar la hora del input
+    // --- ENTRADA (guardar en Firebase) ---
+    btnEntrada.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const placa = (inputPatente.value||'').trim().toUpperCase();
+      if (!placa) { toast('Ingresá la patente'); inputPatente.focus(); return; }
+      const d = new Date();
+      await addEntrada({
+        placa,
+        tipo: tipoSeleccionado,
+        notas: inputNotas.value || '',
+        entradaISO: d.toISOString(),
+        horaTexto: d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+      });
+      inputPatente.value = ''; inputNotas.value = ''; inputPatente.focus();
+      toast('Vehículo ingresado');
+    });
 
-            console.log('Datos ingresados:', { placa, notas, tipo, hora });
+    // --- LISTADO en tiempo real ---
+    let cache = [];
+    onEstacionados((items)=>{
+      cache = items || [];
+      render();
+    });
 
-            if (placa === '') {
-                alert('Por favor, ingresa una patente válida');
-                return;
-            }
+    function render(){
+      const term = (searchInput.value||'').trim().toUpperCase();
+      const filtered = term ? cache.filter(v => (v.placa||'').toUpperCase().includes(term)) : cache;
 
-            if (estacionados.some(v => v.placa === placa)) {
-                alert('Este vehículo ya está estacionado');
-                return;
-            }
+      lista.innerHTML = '';
+      countEl.textContent = cache.length;
 
-            const vehiculo = {
-                placa,
-                notas,
-                tipo,
-                entrada,
-                hora,
-                estado: 'E'
-            };
+      filtered.forEach(v=>{
+        const li = document.createElement('li');
+        li.className = 'in-parking';
+        const hora = v.entradaISO ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : (v.horaTexto||'');
+        const emoji = v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
 
-            estacionados.push(vehiculo);
-            localStorage.setItem('estacionados', JSON.stringify(estacionados));
-            renderizarListas();
-            showToast('Vehículo ingresado');
+        const left = document.createElement('div');
+        const plateSpan = document.createElement('span'); plateSpan.className='plate'; plateSpan.textContent = `${emoji} ${v.placa}`;
+        const timeSpan  = document.createElement('span'); timeSpan.className='time'; timeSpan.textContent = hora;
+        left.appendChild(plateSpan); left.appendChild(timeSpan);
+        if (v.notas){ const n=document.createElement('span'); n.className='note'; n.textContent=v.notas; left.appendChild(n); }
 
-            // Reiniciar preselección a Auto después de ingresar
-            selectedType = 'auto';
-            document.getElementById('autoBtn').classList.add('active');
-            document.getElementById('camionetaBtn').classList.remove('active');
-            document.getElementById('motoBtn').classList.remove('active');
-            placaInput.value = '';
-            notasInput.value = '';
-            console.log('Vehículo ingresado:', vehiculo);
-            updateSuggestions(); // Actualizar sugerencias después de ingresar
-        }
+        const del = document.createElement('button'); del.className='delete-btn'; del.textContent='SALIDA';
+        del.addEventListener('click', ()=>openExitModal(v));
 
-        function salidaVehiculo(index) {
-            const vehiculo = estacionados[index];
-            const salida = new Date();
-            const entrada = new Date(vehiculo.entrada);
+        li.appendChild(left); li.appendChild(del);
+        lista.appendChild(li);
+      });
 
-            const tiempoMinutos = Math.ceil((salida - entrada) / (1000 * 60));
-            const horasCompletas = Math.floor(tiempoMinutos / 60); // Horas completas
-            const minutosRestantes = tiempoMinutos % 60; // Minutos restantes
-            const tarifaHora = tarifas[vehiculo.tipo];
+      // Sugerencias (máx 5)
+      const dl = document.getElementById('placaSuggestions');
+      dl.innerHTML = '';
+      [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
+        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
+      });
+    }
 
-            // Calcular cobro: primera hora completa + fracciones de 30 minutos
-            let cobroTotal = tarifaHora; // Primera hora completa
-            if (horasCompletas > 0) {
-                cobroTotal += (horasCompletas - 1) * tarifaHora; // Horas adicionales completas
-            }
-            const fracciones30min = Math.floor(minutosRestantes / 30); // Fracciones de 30 minutos
-            cobroTotal += fracciones30min * (tarifaHora / 2); // Cada 30 min es la mitad de la tarifa
+    searchInput.addEventListener('input', render);
+    clearBtn.addEventListener('click', ()=>{searchInput.value=''; render();});
+    inputPatente.addEventListener('keypress', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); } });
 
-            cobro = cobroTotal;
+    // --- Modal SALIDA (solo elimina por ahora) ---
+    let currentItem = null; let cobro = 0;
+    function openExitModal(item){
+      currentItem = item;
+      const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
+      const salida = new Date();
+      const min = Math.max(1, Math.ceil((salida-entrada)/60000));
+      // tarifa simple temporal (podemos cambiarla según config.html más adelante)
+      const tarifaHora = item.tipo==='moto'?3: item.tipo==='camioneta'?7:5;
+      const horas = Math.floor(min/60);
+      const resto = min%60;
+      let total = tarifaHora; if(horas>0) total += (horas-1)*tarifaHora; total += Math.floor(resto/30)*(tarifaHora/2);
+      cobro = Math.round(total);
 
-            // Mostrar modal con los datos solicitados en renglones separados
-            currentExitIndex = index;
-            document.getElementById('exitTitle').textContent = vehiculo.placa.toUpperCase(); // Solo la patente en mayúsculas y grande
-            document.getElementById('exitInfo').innerHTML = `Entrada: ${new Date(vehiculo.entrada).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} hs.<br>Salida: ${salida.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} hs.<br>Tiempo: ${tiempoMinutos} minutos`;
-            document.getElementById('exitAmount').textContent = `$${cobro}`; // Monto en letra grande
-            document.getElementById('paymentInput').value = ''; // Limpiar el input
-            document.getElementById('changeOutput').textContent = 'Vuelto: $0';
-            document.getElementById('exitModal').style.display = 'flex';
-            if (document.body.classList.contains('dark-mode')) {
-                document.getElementById('exitModal').querySelector('.modal-content').classList.add('dark-mode');
-            }
-            showToast('Salida confirmada');
+      exitTitle.textContent = item.placa.toUpperCase();
+      exitInfo.innerHTML = `Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Tiempo: ${min} minutos`;
+      exitAmount.textContent = `$${cobro}`;
+      paymentInput.value=''; changeOutput.textContent = 'Vuelto: $0';
+      exitModal.style.display='flex';
+      if (document.body.classList.contains('dark-mode')) exitModal.querySelector('.modal-content').classList.add('dark-mode');
+    }
 
-            // Añadir evento para teclas en el modal
-            document.addEventListener('keydown', handleModalKeyPress);
-        }
+    paymentInput.addEventListener('input', ()=>{
+      const pago = parseFloat(paymentInput.value)||0;
+      const vuelto = pago - cobro;
+      changeOutput.textContent = `Vuelto: ${vuelto>=0? '$'+vuelto : 'Pago insuficiente'}`;
+    });
 
-        function calculateChange() {
-            const payment = parseFloat(document.getElementById('paymentInput').value) || 0;
-            const change = payment - cobro;
-            document.getElementById('changeOutput').textContent = `Vuelto: $${change >= 0 ? change : 'Pago insuficiente'}`;
-        }
+    confirmButton.addEventListener('click', async ()=>{
+      if (!currentItem) return;
+      await removeEstacionado(currentItem.id);
+      exitModal.style.display='none';
+      toast('Salida confirmada');
+      currentItem = null;
+    });
 
-        function confirmExit() {
-            // Permitir confirmar sin monto, solo verificar si el pago (opcional) es suficiente
-            const payment = parseFloat(document.getElementById('paymentInput').value) || 0;
-            if (payment >= cobro || payment === 0) { // Permitir salida sin pago
-                estacionados.splice(currentExitIndex, 1);
-                localStorage.setItem('estacionados', JSON.stringify(estacionados));
-                renderizarListas();
-                document.getElementById('exitModal').style.display = 'none';
-                currentExitIndex = -1;
-                document.removeEventListener('keydown', handleModalKeyPress); // Remover evento al cerrar
-            } else {
-                alert('Pago insuficiente. Por favor, ingrese un monto mayor o igual al cobro.');
-            }
-        }
+    closeModal.addEventListener('click', ()=>{ exitModal.style.display='none'; currentItem=null; });
 
-        function handleModalKeyPress(event) {
-            if (document.getElementById('exitModal').style.display === 'flex') {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    document.getElementById('confirmButton').click(); // Simular clic en Confirmar
-                } else if (event.key === 'Escape') {
-                    event.preventDefault();
-                    document.getElementById('exitModal').style.display = 'none';
-                    document.removeEventListener('keydown', handleModalKeyPress); // Remover evento al cerrar
-                }
-            }
-        }
-
-        function renderizarListas() {
-            const listaEstacionados = document.getElementById('listaEstacionados');
-            const count = document.getElementById('count');
-            const searchInput = document.getElementById('searchInput');
-            const clearFilterBtn = document.getElementById('clearFilterBtn');
-
-            if (!listaEstacionados || !count || !searchInput || !clearFilterBtn) {
-                console.log('Error: Elementos no encontrados');
-                return;
-            }
-
-            const searchTerm = searchInput.value.trim().toUpperCase();
-            listaEstacionados.innerHTML = '';
-            count.textContent = estacionados.length;
-
-            clearFilterBtn.classList.toggle('active', searchTerm !== '');
-
-            const filteredEstacionados = searchTerm === ''
-                ? estacionados
-                : estacionados.filter(v => v.placa.includes(searchTerm));
-
-            filteredEstacionados.forEach((v, index) => {
-                const li = document.createElement('li');
-                li.className = v.estado === 'E' ? 'in-parking' : 'used';
-                if (document.body.classList.contains('dark-mode')) li.classList.add('dark-mode');
-                const plateSpan = document.createElement('span');
-                plateSpan.className = 'plate';
-                if (document.body.classList.contains('dark-mode')) plateSpan.classList.add('dark-mode');
-                let emoji = '';
-                if (v.tipo === 'auto') emoji = '🚗 ';
-                else if (v.tipo === 'camioneta') emoji = '🚐 ';
-                else if (v.tipo === 'moto') emoji = '🏍️ ';
-                plateSpan.textContent = emoji + v.placa;
-                const timeSpan = document.createElement('span');
-                timeSpan.className = 'time';
-                if (document.body.classList.contains('dark-mode')) timeSpan.classList.add('dark-mode');
-                timeSpan.textContent = v.hora;
-                const noteSpan = v.notas ? document.createElement('span') : null;
-                if (noteSpan) {
-                    noteSpan.className = 'note';
-                    if (document.body.classList.contains('dark-mode')) noteSpan.classList.add('dark-mode');
-                    noteSpan.textContent = v.notas;
-                }
-                const div = document.createElement('div');
-                div.appendChild(plateSpan);
-                div.appendChild(timeSpan);
-                if (noteSpan) div.appendChild(noteSpan);
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'delete-btn';
-                deleteButton.textContent = 'SALIDA';
-                deleteButton.onclick = () => salidaVehiculo(estacionados.indexOf(v));
-                li.appendChild(div);
-                li.appendChild(deleteButton);
-                listaEstacionados.appendChild(li);
-            });
-        }
-
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast show';
-            setTimeout(() => {
-                toast.className = 'toast';
-            }, 2000);
-        }
-
-        function updateSuggestions() {
-            const datalist = document.getElementById('placaSuggestions');
-            datalist.innerHTML = '';
-            const uniquePlates = [...new Set(estacionados.map(v => v.placa))].slice(0, 5);
-            uniquePlates.forEach(placa => {
-                const option = document.createElement('option');
-                option.value = placa;
-                datalist.appendChild(option);
-            });
-            frequentPlates.forEach(placa => {
-                if (!uniquePlates.includes(placa)) {
-                    const option = document.createElement('option');
-                    option.value = placa;
-                    datalist.appendChild(option);
-                }
-            });
-        }
-
-        function updateEntryTime() {
-            const entryTimeInput = document.getElementById('entryTime');
-            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            entryTimeInput.value = now;
-        }
-        setInterval(updateEntryTime, 60000);
-        updateEntryTime();
-
-        window.onload = function() {
-            renderizarListas();
-            updateSuggestions();
-            const searchInput = document.getElementById('searchInput');
-            const clearFilterBtn = document.getElementById('clearFilterBtn');
-            const autoBtn = document.getElementById('autoBtn');
-            const camionetaBtn = document.getElementById('camionetaBtn');
-            const motoBtn = document.getElementById('motoBtn');
-
-            searchInput.addEventListener('input', renderizarListas);
-            clearFilterBtn.addEventListener('click', function() {
-                searchInput.value = '';
-                renderizarListas();
-            });
-
-            const placaInput = document.getElementById('placa');
-            placaInput.addEventListener('input', updateSuggestions);
-            placaInput.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    ingresarVehiculo();
-                }
-            });
-
-            autoBtn.addEventListener('click', function() {
-                selectedType = 'auto';
-                autoBtn.classList.add('active');
-                camionetaBtn.classList.remove('active');
-                motoBtn.classList.remove('active');
-            });
-
-            camionetaBtn.addEventListener('click', function() {
-                selectedType = 'camioneta';
-                camionetaBtn.classList.add('active');
-                autoBtn.classList.remove('active');
-                motoBtn.classList.remove('active');
-            });
-
-            motoBtn.addEventListener('click', function() {
-                selectedType = 'moto';
-                motoBtn.classList.add('active');
-                autoBtn.classList.remove('active');
-                camionetaBtn.classList.remove('active');
-            });
-        };
-    </script>
+    document.addEventListener('keydown', (e)=>{
+      if (exitModal.style.display==='flex'){
+        if (e.key==='Enter') confirmButton.click();
+        if (e.key==='Escape') closeModal.click();
+      }
+    });
+  </script>
 </body>
 </html>
