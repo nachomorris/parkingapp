@@ -21,36 +21,39 @@ const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 console.log("Firebase OK ✅ [GLOBAL + OFFLINE QUEUE]");
 
-// ---------- Util ----------
+// ---------- Utils ----------
 const isOnline = () => navigator.onLine;
 const LS_ENTRADAS = "parking_pendingEntradas";
 const LS_SALIDAS  = "parking_pendingSalidas";
 
-function loadJSON(key, def = []) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; }
-}
-function saveJSON(key, val) {
-  localStorage.setItem(key, JSON.stringify(val));
-}
+const loadJSON = (k, d=[]) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-function getPendEntradas() { return loadJSON(LS_ENTRADAS); }
-function setPendEntradas(arr) { saveJSON(LS_ENTRADAS, arr); notifySubscribers(); }
+const getPendEntradas = () => loadJSON(LS_ENTRADAS);
+const setPendEntradas = (arr) => { saveJSON(LS_ENTRADAS, arr); notifySubscribers(); };
 
-function getPendSalidas() { return loadJSON(LS_SALIDAS); }
-function setPendSalidas(arr) { saveJSON(LS_SALIDAS, arr); notifySubscribers(); }
+const getPendSalidas  = () => loadJSON(LS_SALIDAS);
+const setPendSalidas  = (arr) => { saveJSON(LS_SALIDAS, arr); notifySubscribers(); };
 
-// ---------- onEstacionados (fusiona remoto + local) ----------
+// ---------- Estado de suscriptores y remoto ----------
 let subs = [];
 let lastRemoteList = [];
 let listenerAttached = false;
 
 function notifySubscribers() {
-  const locals = getPendEntradas();                 // entradas pendientes (ids local-...)
-  const remIds = new Set(lastRemoteList.map(v => v.id));
-  const merged = [
-    ...lastRemoteList,
-    ...locals.filter(v => !remIds.has(v.id))        // evita duplicados si ya subieron
-  ].sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
+  const locals = getPendEntradas();
+  const rem = lastRemoteList;
+
+  // Conjuntos para eliminar duplicados:
+  const remIds = new Set(rem.map(x => x.id));                                  // ids reales de server
+  const remOriginals = new Set(rem.map(x => x.idOriginal).filter(Boolean));    // ids locales ya subidos
+
+  // Quedarme sólo con locales que NO estén ya representados en remoto:
+  const localsFiltered = locals.filter(v => !remIds.has(v.id) && !remOriginals.has(v.id));
+
+  const merged = [...rem, ...localsFiltered]
+    .sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
+
   subs.forEach(cb => cb(merged));
 }
 
@@ -64,12 +67,12 @@ function attachRemoteListenerOnce() {
       .sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
     notifySubscribers();
   }, () => {
-    // si hay error/red: mostramos solo lo local
+    // si hay error o sin red, mantenemos lo local
     notifySubscribers();
   });
 }
 
-// ---------- Sincronización de colas al reconectar ----------
+// ---------- Procesamiento de colas al reconectar ----------
 async function processQueues() {
   if (!isOnline()) return;
 
@@ -85,65 +88,56 @@ async function processQueues() {
         const key = push(ref(db, "estacionados")).key;
         await set(ref(db, `estacionados/${key}`), { id: key, ...item, idOriginal: item.id });
 
-        // ¿Había una SALIDA pendiente para esa entrada local?
+        // Si había salida pendiente para ese id local, borramos inmediatamente el recién subido
         const idxSalida = salidas.findIndex(s => s.id === item.id);
         if (idxSalida !== -1) {
-          // Si hay salida pendiente, borramos inmediatamente el registro recién subido
           try { await remove(ref(db, `estacionados/${key}`)); } catch {}
-          salidas.splice(idxSalida, 1); // quitamos esa salida de la cola
+          salidas.splice(idxSalida, 1);
         }
 
-        // item subido/borrado -> no queda pendiente
+        // No re-agrego a remaining: ya subió (o subió y se borró)
       } catch (e) {
-        // si falla la subida, queda en la cola
+        // falló subir, lo mantenemos pendiente
         remaining.push(item);
       }
     }
     setPendEntradas(remaining);
-    setPendSalidas(salidas); // actualizar si quitamos alguna
+    setPendSalidas(salidas);
   }
 
-  // 2) Ejecutar SALIDAS pendientes
+  // 2) Ejecutar SALIDAS pendientes (para ids reales)
   let salidas = getPendSalidas();
   if (salidas.length) {
     const remaining = [];
     const entradasPend = getPendEntradas();
 
     for (const s of salidas) {
-      // Si apunta a un id local-... y esa entrada aún está pendiente, todavía no podemos borrar en server
+      // Si es local-... y la entrada aún está pendiente, no hay nada que borrar en server todavía
       if (String(s.id).startsWith("local-")) {
-        // Si ya no existe esa entrada en pendientes, descartamos esa salida fantasma
-        if (entradasPend.some(e => e.id === s.id)) {
-          remaining.push(s);
-        }
+        if (entradasPend.some(e => e.id === s.id)) remaining.push(s);
         continue;
       }
       try {
         await remove(ref(db, `estacionados/${s.id}`));
       } catch (e) {
-        remaining.push(s); // si falla, queda para el próximo intento
+        remaining.push(s);
       }
     }
     setPendSalidas(remaining);
   }
 }
 
-// Reaccionar a cambios de conectividad
 window.addEventListener("online",  () => processQueues());
-window.addEventListener("offline", () => notifySubscribers()); // refresca vista fusionada
+window.addEventListener("offline", () => notifySubscribers());
 
-// ---------- API para la app ----------
+// ---------- API PÚBLICA ----------
 export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) {
-  // Si hay red, escribir directo
   if (isOnline()) {
     const key = push(ref(db, "estacionados")).key;
-    await set(ref(db, `estacionados/${key}`), {
-      id: key, placa, tipo, notas, entradaISO, horaTexto
-    });
+    await set(ref(db, `estacionados/${key}`), { id: key, placa, tipo, notas, entradaISO, horaTexto });
     return key;
   }
-
-  // Sin red: guardo local y lo muestro ya
+  // Offline: crear id temporal local-...
   const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
   const nuevo  = { id: tempId, placa, tipo, notas, entradaISO, horaTexto };
   const entradas = getPendEntradas();
@@ -155,45 +149,53 @@ export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) 
 export function onEstacionados(callback) {
   subs.push(callback);
   attachRemoteListenerOnce();
+  notifySubscribers();  // primer render inmediato (útil si arranca sin red)
 
-  // Primer render con lo que haya (útil si arranca sin red)
-  notifySubscribers();
-
-  // devolver unsubscribe opcional
   return () => { subs = subs.filter(fn => fn !== callback); };
 }
 
 export async function removeEstacionado(id) {
-  // si es local aún no subido -> lo quito de la cola local inmediatamente
+  // Si es un id local-...:
   if (String(id).startsWith("local-")) {
+
+    // Si hay red, intento encontrar su contraparte real (subida) por idOriginal
+    if (isOnline()) {
+      const match = lastRemoteList.find(r => r.idOriginal === id);
+      if (match) {
+        try { await remove(ref(db, `estacionados/${match.id}`)); } catch {}
+      }
+    }
+
+    // En cualquier caso, lo quito de la cola local para que desaparezca de la UI
     const entradas = getPendEntradas().filter(e => e.id !== id);
     setPendEntradas(entradas);
-    // limpiar una posible salida pendiente duplicada
+
+    // Limpio una posible salida pendiente duplicada
     const salidas = getPendSalidas().filter(s => s.id !== id);
     setPendSalidas(salidas);
+
     return;
   }
 
-  // con red -> borrar directo en server
+  // Si es un id real:
   if (isOnline()) {
     await remove(ref(db, `estacionados/${id}`));
     return;
   }
 
-  // sin red -> encolo salida
+  // Sin red: encolo salida para id real
   const salidas = getPendSalidas();
   if (!salidas.some(s => s.id === id)) {
     salidas.push({ id });
     setPendSalidas(salidas);
   }
-  // notify para que la UI pueda distinguir si quisieras (aquí no cambiamos estilo)
   notifySubscribers();
 }
 
 // ---------- Arranque ----------
-processQueues(); // intenta sincronizar si ya hay red
+processQueues();
 
-// ---------- Helpers de prueba en consola ----------
+// ---------- Debug ----------
 window.firebase = { app, db };
 window.parkingDebug = {
   getPendEntradas,
