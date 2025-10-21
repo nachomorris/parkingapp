@@ -1,41 +1,294 @@
-// === NUEVOS FILTROS ===
-const btnAyer  = document.getElementById('btnAyer');
-const btnUlt7  = document.getElementById('btnUlt7');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Gestor de Estacionamiento</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-// hoy
-btnHoy.addEventListener('click', ()=>{
-  const d = new Date();
-  d.setHours(0,0,0,0);
-  const from = d.getTime();
-  const to = from + 24*60*60*1000 - 1;
-  range = { from, to };
-  fromInp.value = ymdLocal(d);
-  toInp.value   = ymdLocal(d);
-  render();
-});
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
 
-// ayer
-btnAyer.addEventListener('click', ()=>{
-  const d = new Date();
-  d.setHours(0,0,0,0);
-  const to = d.getTime() - 1;
-  const from = to - 24*60*60*1000 + 1;
-  range = { from, to };
-  const dFrom = new Date(from);
-  const dTo   = new Date(to);
-  fromInp.value = ymdLocal(dFrom);
-  toInp.value   = ymdLocal(dTo);
-  render();
-});
+    body {
+      background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
 
-// últimos 7 días
-btnUlt7.addEventListener('click', ()=>{
-  const now = new Date();
-  now.setHours(23,59,59,999);
-  const to = now.getTime();
-  const from = to - 7*24*60*60*1000;
-  range = { from, to };
-  fromInp.value = ymdLocal(new Date(from));
-  toInp.value   = ymdLocal(new Date(to));
-  render();
-});
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+      text-transform: uppercase;
+    }
+
+    .dashboard {
+      width: 100%;
+      max-width: 1000px;
+      background: #fff;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+    }
+
+    .filters input[type="date"] {
+      padding: 8px;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+      font-size: 14px;
+    }
+
+    .btn, .btn-soft {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s ease;
+      font-weight: 600;
+    }
+
+    .btn { background: #fda085; color: white; }
+    .btn:hover { background: #f6d365; }
+
+    .btn-soft {
+      background: #fff5f0;
+      border: 1px solid #fda085;
+      color: #fda085;
+    }
+    .btn-soft:hover, .btn-soft.active {
+      background: #fda085;
+      color: white;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      background: #fff5f0;
+      border-radius: 10px;
+      padding: 15px;
+    }
+
+    .card {
+      text-align: center;
+    }
+
+    .card h3 {
+      font-size: 1.2em;
+      color: #fda085;
+    }
+
+    .card p {
+      font-size: 1.6em;
+      font-weight: bold;
+    }
+
+    canvas {
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .stats { flex-direction: column; gap: 10px; }
+      .filters { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Centro de Control</h1>
+
+  <div class="dashboard">
+    <div class="filters">
+      <input type="date" id="fromDate">
+      <input type="date" id="toDate">
+      <button class="btn-soft" id="btnHoy">Hoy</button>
+      <button class="btn-soft" id="btnAyer">Ayer</button>
+      <button class="btn-soft" id="btnUlt7">Últimos 7 días</button>
+      <button class="btn-soft" id="btnMes">Este mes</button>
+      <button class="btn" id="btnReset">Todo</button>
+    </div>
+
+    <div class="stats">
+      <div class="card">
+        <h3>Vehículos Ingresados</h3>
+        <p id="totalEntradas">0</p>
+      </div>
+      <div class="card">
+        <h3>Vehículos Retirados</h3>
+        <p id="totalSalidas">0</p>
+      </div>
+      <div class="card">
+        <h3>Recaudación</h3>
+        <p id="totalRecaudado">$0</p>
+      </div>
+    </div>
+
+    <canvas id="chartEntradas"></canvas>
+    <canvas id="chartRecaudacion"></canvas>
+  </div>
+
+  <script type="module">
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+    import { app } from "./firebase.js";
+    const db = getDatabase(app);
+
+    const totalEntradasEl = document.getElementById("totalEntradas");
+    const totalSalidasEl = document.getElementById("totalSalidas");
+    const totalRecaudadoEl = document.getElementById("totalRecaudado");
+    const fromInp = document.getElementById("fromDate");
+    const toInp = document.getElementById("toDate");
+    const btnHoy = document.getElementById("btnHoy");
+    const btnAyer = document.getElementById("btnAyer");
+    const btnUlt7 = document.getElementById("btnUlt7");
+    const btnMes = document.getElementById("btnMes");
+    const btnReset = document.getElementById("btnReset");
+
+    const chartEntradasCtx = document.getElementById("chartEntradas").getContext("2d");
+    const chartRecaudacionCtx = document.getElementById("chartRecaudacion").getContext("2d");
+
+    let dataHistorial = [];
+    let range = null;
+
+    const ymdLocal = (d) => d.toISOString().split("T")[0];
+
+    function render() {
+      const now = new Date();
+      const from = range?.from ? new Date(range.from) : new Date(0);
+      const to = range?.to ? new Date(range.to) : now;
+
+      const filtered = dataHistorial.filter(e => {
+        const t = new Date(e.timestamp).getTime();
+        return t >= from && t <= to;
+      });
+
+      const totalEntradas = filtered.length;
+      const totalSalidas = filtered.filter(x => x.tipo === "salida").length;
+      const totalRecaudado = filtered.reduce((a,b)=> a + (b.monto||0), 0);
+
+      totalEntradasEl.textContent = totalEntradas;
+      totalSalidasEl.textContent = totalSalidas;
+      totalRecaudadoEl.textContent = "$" + totalRecaudado.toLocaleString("es-AR");
+
+      const porDia = {};
+      filtered.forEach(e=>{
+        const d = ymdLocal(new Date(e.timestamp));
+        porDia[d] = (porDia[d]||0) + 1;
+      });
+
+      const fechas = Object.keys(porDia).sort();
+      const cantidades = fechas.map(f=>porDia[f]);
+
+      if(window.chart1) window.chart1.destroy();
+      if(window.chart2) window.chart2.destroy();
+
+      window.chart1 = new Chart(chartEntradasCtx, {
+        type: 'bar',
+        data: { labels: fechas, datasets: [{ label: "Ingresos diarios", data: cantidades, backgroundColor: "#fda085" }] },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      const recaudPorDia = {};
+      filtered.forEach(e=>{
+        if(e.tipo === "salida" && e.monto){
+          const d = ymdLocal(new Date(e.timestamp));
+          recaudPorDia[d] = (recaudPorDia[d]||0) + e.monto;
+        }
+      });
+
+      const fechasR = Object.keys(recaudPorDia).sort();
+      const montosR = fechasR.map(f=>recaudPorDia[f]);
+
+      window.chart2 = new Chart(chartRecaudacionCtx, {
+        type: 'line',
+        data: { labels: fechasR, datasets: [{ label: "Recaudación diaria", data: montosR, borderColor: "#fda085", fill: false, tension: 0.3 }] },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    }
+
+    onValue(ref(db, "historial"), (snap)=>{
+      const val = snap.val() || {};
+      dataHistorial = Object.values(val);
+      render();
+    });
+
+    // === FILTROS ===
+    btnHoy.addEventListener('click', ()=>{
+      const d = new Date();
+      d.setHours(0,0,0,0);
+      const from = d.getTime();
+      const to = from + 24*60*60*1000 - 1;
+      range = { from, to };
+      fromInp.value = ymdLocal(d);
+      toInp.value   = ymdLocal(d);
+      render();
+    });
+
+    btnAyer.addEventListener('click', ()=>{
+      const d = new Date();
+      d.setHours(0,0,0,0);
+      const to = d.getTime() - 1;
+      const from = to - 24*60*60*1000 + 1;
+      range = { from, to };
+      fromInp.value = ymdLocal(new Date(from));
+      toInp.value   = ymdLocal(new Date(to));
+      render();
+    });
+
+    btnUlt7.addEventListener('click', ()=>{
+      const now = new Date();
+      now.setHours(23,59,59,999);
+      const to = now.getTime();
+      const from = to - 7*24*60*60*1000;
+      range = { from, to };
+      fromInp.value = ymdLocal(new Date(from));
+      toInp.value   = ymdLocal(new Date(to));
+      render();
+    });
+
+    btnMes.addEventListener('click', ()=>{
+      const now = new Date();
+      const from = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const to = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59,999).getTime();
+      range = { from, to };
+      fromInp.value = ymdLocal(new Date(from));
+      toInp.value   = ymdLocal(new Date(to));
+      render();
+    });
+
+    btnReset.addEventListener('click', ()=>{
+      range = null;
+      fromInp.value = "";
+      toInp.value = "";
+      render();
+    });
+
+    fromInp.addEventListener('change', ()=> {
+      const from = new Date(fromInp.value).getTime();
+      const to = new Date(toInp.value || new Date()).getTime();
+      range = { from, to };
+      render();
+    });
+
+    toInp.addEventListener('change', ()=> {
+      const from = new Date(fromInp.value || new Date(0)).getTime();
+      const to = new Date(toInp.value).getTime();
+      range = { from, to };
+      render();
+    });
+  </script>
+</body>
+</html>
