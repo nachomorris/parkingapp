@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitor en Tiempo Real</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #ecf0f1;
+      min-height: 100vh;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 400px; /* Ancho máximo para móviles */
+      background: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    header {
+      padding: 15px;
+      background: #3498db;
+      border-bottom: 2px solid #2980b9;
+      text-align: center;
+    }
+    header .title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .count {
+      padding: 15px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ecf0f1;
+      text-align: center;
+      font-size: 1.2rem;
+      color: #2c3e50;
+    }
+    .list {
+      max-height: 70vh;
+      overflow: auto;
+      padding: 10px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 10px;
+      border-bottom: 1px dashed #ecf0f1;
+      font-size: 1rem;
+    }
+    .row .time {
+      color: #7f8c8d;
+      font-weight: 500;
+    }
+    .row .type {
+      font-weight: 700;
+      color: #2c3e50;
+    }
+    /* Responsive (opcional, ya está optimizado para móvil) */
+    @media (min-width: 768px) {
+      .container {
+        max-width: 600px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">Monitor en Tiempo Real</div>
+    </header>
+    <div class="count">Ingresos del día: <span id="count">0</span></div>
+    <div class="list" id="realtimeList">
+      <!-- Ingresos se cargarán dinámicamente -->
+    </div>
+  </div>
+  <!-- Firebase -->
+  <script type="module">
+    import { db } from './firebase.js';
+    import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+    // Estado
+    let ingresos = [];
+
+    // Utilidades
+    const $ = (id) => document.getElementById(id);
+    function parseISO(s) {
+      try { return new Date(s); } catch { return null; }
+    }
+    function getHour(time) {
+      return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Cargar datos desde Firebase
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Inicio del día
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999); // Fin del día
+
+    onValue(ref(db, 'estacionados'), (snap) => {
+      const val = snap.val() || {};
+      ingresos = Object.values(val)
+        .filter(x => {
+          const entrada = parseISO(x.entradaISO);
+          return entrada && entrada >= today && entrada <= todayEnd;
+        })
+        .sort((a, b) => parseISO(b.entradaISO) - parseISO(a.entradaISO)); // Orden descendente por entrada
+      render();
+    });
+
+    // Renderizar lista
+    function render() {
+      const list = $('realtimeList');
+      const countEl = $('count');
+      list.innerHTML = '';
+      countEl.textContent = ingresos.length;
+      ingresos.forEach(x => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const entrada = parseISO(x.entradaISO);
+        const time = entrada ? getHour(entrada) : '--:--';
+        const type = x.tipo || 'auto';
+        row.innerHTML = `<span class="time">${time}</span><span class="type">${type.toUpperCase()}</span>`;
+        list.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>
