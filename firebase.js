@@ -1,7 +1,9 @@
-// ---------- Firebase SDK (CDN estable) ----------
+// ---------- Firebase SDK (CDN v11) ----------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-import { getDatabase, ref, push, set, onValue, remove } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+import {
+  getDatabase, ref, push, set, onValue, remove
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
 // ---------- TU CONFIG ----------
 const firebaseConfig = {
@@ -21,7 +23,7 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
-console.log("Firebase OK ✅", app.name);
+console.log("Firebase OK ✅ [DEFAULT]");
 
 // ---------- Auth anónima ----------
 let currentUid = null;
@@ -33,11 +35,13 @@ const authReady = new Promise((resolve, reject) => {
 });
 const path = (p) => `users/${currentUid}/${p}`;
 
-// ---------- API mínima para tu app ----------
+// ---------- API para la app ----------
 export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) {
   await authReady;
   const key = push(ref(db, path("estacionados"))).key;
-  await set(ref(db, path(`estacionados/${key}`)), { id: key, placa, tipo, notas, entradaISO, horaTexto });
+  await set(ref(db, path(`estacionados/${key}`)), {
+    id: key, placa, tipo, notas, entradaISO, horaTexto
+  });
   return key;
 }
 
@@ -45,8 +49,8 @@ export function onEstacionados(callback) {
   authReady.then(() => {
     onValue(ref(db, path("estacionados")), (snap) => {
       const val = snap.val() || {};
-      // Orden opcional por hora de entrada (más recientes primero)
-      const arr = Object.values(val).sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
+      const arr = Object.values(val)
+        .sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
       callback(arr);
     });
   });
@@ -57,18 +61,13 @@ export async function removeEstacionado(id) {
   await remove(ref(db, path(`estacionados/${id}`)));
 }
 
-// ---------- Utilidad para probar desde consola (opcional) ----------
+// ---------- Helper de prueba en consola ----------
+window.firebase = { app, auth, db };   // para tests manuales
 window.firebasePing = async () => {
   await authReady;
   const key = push(ref(db, path("ping"))).key;
   await set(ref(db, path(`ping/${key}`)), { ts: new Date().toISOString() });
-  console.log("DB OK ✅ ping subido:", key);
+  console.log("DB OK ✅ ping:", key);
 };
 
-// (export para usos futuros si querés)
 export { app, auth, db };
-window.firebase = {
-  app,
-  auth,
-  db
-};
