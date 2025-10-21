@@ -67,3 +67,4 @@ window.firebasePing = async () => {
 
 // (export para usos futuros si querés)
 export { app, auth, db };
+window.firebase = firebase;
