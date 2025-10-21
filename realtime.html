@@ -40,15 +40,24 @@
       color: #ffffff;
     }
     .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
       padding: 15px;
-      background: #e8f0f2; /* Fondo más contrastante */
-      border-bottom: 2px solid #3498db; /* Borde más definido */
+    }
+    .summary-left,
+    .summary-right {
+      background: #e8f0f2; /* Fondo contrastante */
+      border: 2px solid #3498db; /* Borde destacado */
+      border-radius: 8px;
+      padding: 10px;
       text-align: center;
       font-size: 1.3rem; /* Fuente más grande */
       color: #2c3e50;
     }
-    .summary span {
-      font-weight: 700; /* Texto en negrita para destacar */
+    .summary-left span,
+    .summary-right span {
+      font-weight: 700; /* Texto en negrita */
     }
     .search {
       padding: 10px 15px;
@@ -112,7 +121,18 @@
     tbody tr:hover {
       background: #f9f9f9;
     }
-    /* Responsive (ya optimizado para móvil) */
+    /* Responsive */
+    @media (max-width: 600px) {
+      .summary {
+        grid-template-columns: 1fr; /* Apila los recuadros en móviles */
+        gap: 5px;
+      }
+      .summary-left,
+      .summary-right {
+        padding: 8px;
+        font-size: 1.1rem; /* Fuente un poco más pequeña en móviles */
+      }
+    }
     @media (min-width: 768px) {
       .container {
         max-width: 600px;
@@ -126,8 +146,12 @@
       <div class="title">Monitor en Tiempo Real</div>
     </header>
     <div class="summary">
-      Salidas del día: <span id="count">0</span><br>
-      Recaudación: <span id="revenue">$0</span>
+      <div class="summary-left">
+        Salidas del día: <span id="count">0</span>
+      </div>
+      <div class="summary-right">
+        Recaudación: <span id="revenue">$0</span>
+      </div>
     </div>
     <div class="search">
       <input type="text" id="searchInput" placeholder="Buscar por patente..." />
