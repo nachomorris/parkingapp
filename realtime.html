@@ -47,8 +47,24 @@
       font-size: 1.2rem;
       color: #2c3e50;
     }
+    .search {
+      padding: 10px 15px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ecf0f1;
+    }
+    .search input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #bdc3c7;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .search input:focus {
+      border-color: #3498db;
+      outline: none;
+    }
     .table-wrap {
-      max-height: 70vh;
+      max-height: 60vh;
       overflow: auto;
       padding: 10px;
     }
@@ -72,23 +88,6 @@
     tbody tr:hover {
       background: #f9f9f9;
     }
-    footer {
-      padding: 15px;
-      text-align: center;
-    }
-    .btn {
-      padding: 10px 16px;
-      background: #e74c3c;
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 700;
-      transition: background 0.3s;
-    }
-    .btn:hover {
-      background: #c0392b;
-    }
     /* Responsive (ya optimizado para móvil) */
     @media (min-width: 768px) {
       .container {
@@ -106,10 +105,14 @@
       Salidas del día: <span id="count">0</span><br>
       Recaudación: <span id="revenue">$0</span>
     </div>
+    <div class="search">
+      <input type="text" id="searchInput" placeholder="Buscar por patente..." />
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            <th>Patente</th>
             <th>Hora Entrada</th>
             <th>Hora Salida</th>
             <th>Duración</th>
@@ -119,9 +122,6 @@
         <tbody id="realtimeTable"></tbody>
       </table>
     </div>
-    <footer>
-      <button class="btn" id="exportCsv">Exportar CSV</button>
-    </footer>
   </div>
   <!-- Firebase -->
   <script type="module">
@@ -132,6 +132,7 @@
     const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
     // ====== Estado ======
     let salidas = [];
+    let searchTerm = '';
 
     // ====== Utilidades ======
     const $ = (id) => document.getElementById(id);
@@ -174,19 +175,33 @@
           return salida && salida >= today && salida <= todayEnd;
         })
         .sort((a, b) => parseISO(b.salidaISO) - parseISO(a.salidaISO)); // Orden descendente por salida
-      render();
+      applyFilter();
     });
 
+    // ====== Filtro por patente ======
+    const searchInput = $('searchInput');
+    searchInput.addEventListener('input', () => {
+      searchTerm = searchInput.value.trim().toUpperCase();
+      applyFilter();
+    });
+
+    function applyFilter() {
+      const filteredSalidas = searchTerm
+        ? salidas.filter(x => (x.placa || '').toUpperCase().includes(searchTerm))
+        : salidas;
+      render(filteredSalidas);
+    }
+
     // ====== Renderizar tabla ======
-    function render() {
+    function render(filteredSalidas) {
       const table = $('realtimeTable');
       const countEl = $('count');
       const revenueEl = $('revenue');
       table.innerHTML = '';
-      countEl.textContent = salidas.length;
-      const totalRevenue = salidas.reduce((sum, x) => sum + computeCharge(x), 0);
+      countEl.textContent = filteredSalidas.length;
+      const totalRevenue = filteredSalidas.reduce((sum, x) => sum + computeCharge(x), 0);
       revenueEl.textContent = `$${totalRevenue.toLocaleString('es-AR')}`;
-      salidas.forEach(x => {
+      filteredSalidas.forEach(x => {
         const tr = document.createElement('tr');
         const entrada = parseISO(x.entradaISO);
         const salida = parseISO(x.salidaISO);
@@ -194,6 +209,7 @@
         const durTxt = formatHM(durMin);
         const cobro = computeCharge(x);
         tr.innerHTML = `
+          <td>${x.placa || 'Sin patente'}</td>
           <td>${entrada ? getHour(entrada) : '--:--'}</td>
           <td>${salida ? getHour(salida) : '--:--'}</td>
           <td>${durTxt}</td>
@@ -202,45 +218,6 @@
         table.appendChild(tr);
       });
     }
-
-    // ====== Exportar CSV ======
-    function toCsv(rows) {
-      return rows.map(r => r.map(v => {
-        const s = String(v ?? '');
-        if (s.includes(';') || s.includes('"') || s.includes('\n')) {
-          return `"${s.replace(/"/g, '""')}"`;
-        }
-        return s;
-      }).join(';')).join('\n');
-    }
-    $('exportCsv').addEventListener('click', () => {
-      const rows = [
-        ['Hora Entrada', 'Hora Salida', 'Duración', 'Cobrado']
-      ];
-      salidas.forEach(x => {
-        const entrada = parseISO(x.entradaISO);
-        const salida = parseISO(x.salidaISO);
-        const durTxt = computeDurText(x);
-        const cobro = computeCharge(x);
-        rows.push([
-          entrada ? getHour(entrada) : '',
-          salida ? getHour(salida) : '',
-          durTxt,
-          cobro
-        ]);
-      });
-      const csv = toCsv(rows);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const todayTxt = dateKey(new Date());
-      a.download = `salidas_${todayTxt}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
   </script>
 </body>
 </html>
