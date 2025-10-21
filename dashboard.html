@@ -102,6 +102,8 @@
         <label>Desde: <input type="date" id="fromDate"></label>
         <label>Hasta: <input type="date" id="toDate"></label>
         <button id="applyRange">Aplicar</button>
+        <button id="todayBtn">Hoy</button>
+        <button id="yesterdayBtn">Ayer</button>
         <button id="last7">Últimos 7 días</button>
         <button id="last30">Últimos 30 días</button>
       </div>
@@ -217,6 +219,11 @@
       $('fromDate').value = dateKey(start);
       $('toDate').value   = dateKey(end);
     }
+    function setRangeAndApply(fromDate, toDate){
+      $('fromDate').value = dateKey(fromDate);
+      $('toDate').value   = dateKey(toDate);
+      applyFilter();
+    }
 
     // ====== Cargar datos ======
     onValue(ref(db, 'salidas'), (snap)=>{
@@ -253,6 +260,19 @@
     $('applyRange').addEventListener('click', applyFilter);
     $('last7').addEventListener('click', ()=>{ setDefaultRange(7); applyFilter(); });
     $('last30').addEventListener('click',()=>{ setDefaultRange(30); applyFilter(); });
+
+    // === NUEVOS: Hoy y Ayer ===
+    $('todayBtn').addEventListener('click', ()=>{
+      const d0 = new Date(); d0.setHours(0,0,0,0);
+      const d1 = new Date(); d1.setHours(23,59,59,999);
+      setRangeAndApply(d0, d1);
+    });
+
+    $('yesterdayBtn').addEventListener('click', ()=>{
+      const y0 = new Date(); y0.setHours(0,0,0,0); y0.setDate(y0.getDate()-1);
+      const y1 = new Date(); y1.setHours(23,59,59,999); y1.setDate(y1.getDate()-1);
+      setRangeAndApply(y0, y1);
+    });
 
     // ====== Render ======
     function render(){
