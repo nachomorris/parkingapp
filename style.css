@@ -35,15 +35,35 @@ body {
   flex-shrink: 0; /* No se achica */
   padding: 20px;
   background: #fff5f0;
-  border-bottom: 2px solid #fda085;
+  border-bottom: 2px solid #fda085; /* divisor notorio */
 }
 
 /* ======= Sección de lista scrollable ======= */
 .list-section {
-  flex: 1; /* Ocupa el resto del espacio */
-  overflow-y: auto; /* ✅ Scroll solo acá */
+  flex: 1;               /* Ocupa el resto del espacio */
+  overflow-y: auto;      /* ✅ Scroll solo acá */
   padding: 20px;
-  background: #fff;
+  background: linear-gradient(to bottom, #ffffff 0%, #fafafa 100%); /* degradado sutil */
+  position: relative;    /* para fades decorativos */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fades decorativos arriba/abajo (opcionales) */
+.list-section::before,
+.list-section::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  height: 10px;
+  pointer-events: none;
+}
+.list-section::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.06), rgba(0,0,0,0));
+}
+.list-section::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.06), rgba(0,0,0,0));
 }
 
 /* ======= Scrollbar personalizado ======= */
@@ -102,7 +122,7 @@ button:hover {
 ul {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 60px 0; /* ⬅️ espacio al final para que no se tape el último ítem */
 }
 
 li {
@@ -114,6 +134,7 @@ li {
   background: #f8f9fa;
   border-radius: 8px;
   border-left: 4px solid #fda085;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); /* sombra suave */
 }
 
 li button {
@@ -125,6 +146,15 @@ li button {
 
 li button:hover {
   background: #c0392b;
+}
+
+/* ======= Animación de entrada de ítems ======= */
+.list-item-enter {
+  animation: itemIn .18s ease-out;
+}
+@keyframes itemIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ======= Responsivo ======= */
