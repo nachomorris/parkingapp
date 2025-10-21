@@ -67,7 +67,7 @@
     }
     .filters button {
       padding: 10px 16px;
-      background: #2ecc71; /* Verde para botones de acción */
+      background: #95a5a6; /* Gris neutro */
       color: #ffffff;
       border: none;
       border-radius: 8px;
@@ -76,7 +76,7 @@
       transition: background 0.3s;
     }
     .filters button:hover {
-      background: #27ae60; /* Verde más oscuro al pasar el ratón */
+      background: #7f8c8d; /* Gris más oscuro al pasar el ratón */
     }
     /* KPI cards */
     .kpis {
@@ -372,20 +372,19 @@
     $('last30').addEventListener('click', () => { setDefaultRange(30); applyFilter(); });
     // === Nuevos: Hoy y Ayer ===
     $('todayBtn').addEventListener('click', () => {
-      const d0 = new Date();
-      d0.setHours(0, 0, 0, 0);
-      const d1 = new Date();
-      d1.setHours(23, 59, 59, 999);
-      setRangeAndApply(d0, d1);
+      const d = new Date();
+      d.setHours(0, 0, 0, 0); // Inicio del día
+      const end = new Date(d);
+      end.setHours(23, 59, 59, 999); // Fin del día
+      setRangeAndApply(d, end);
     });
     $('yesterdayBtn').addEventListener('click', () => {
-      const y0 = new Date();
-      y0.setHours(0, 0, 0, 0);
-      y0.setDate(y0.getDate() - 1);
-      const y1 = new Date();
-      y1.setHours(23, 59, 59, 999);
-      y1.setDate(y1.getDate() - 1);
-      setRangeAndApply(y0, y1);
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      y.setHours(0, 0, 0, 0); // Inicio del día anterior
+      const end = new Date(y);
+      end.setHours(23, 59, 59, 999); // Fin del día anterior
+      setRangeAndApply(y, end);
     });
     // ====== Render ======
     function render() {
