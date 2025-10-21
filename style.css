@@ -44,6 +44,7 @@ body {
   overflow-y: auto; /* ✅ Scroll solo acá */
   padding: 20px;
   background: #fff;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ======= Scrollbar personalizado ======= */
@@ -102,7 +103,7 @@ button:hover {
 ul {
   list-style: none;
   margin: 0;
-  padding: 0 0 60px 0; /* 👉 espacio extra al final para que el último item nunca se tape */
+  padding: 0 0 60px 0; /* ⬅️ espacio al final para que el último ítem no se tape */
 }
 
 li {
@@ -114,17 +115,8 @@ li {
   background: #f8f9fa;
   border-radius: 8px;
   border-left: 4px solid #fda085;
-}
-
-/* ======= Animación de entrada ======= */
-.list-item-enter {
-  animation: itemIn 0.3s cubic-bezier(.2,.8,.2,1);
-  will-change: transform, opacity;
-}
-
-@keyframes itemIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  /* ⬇️ mejora visual sutil */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 li button {
@@ -136,6 +128,39 @@ li button {
 
 li button:hover {
   background: #c0392b;
+}
+
+/* (Opcional) clases que tu HTML usa para info del auto */
+.plate {
+  font-size: 1.3em;
+  font-weight: 700;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.time {
+  font-size: .85em;
+  color: #666;
+  margin-top: 4px;
+  display: block;
+}
+.note {
+  font-size: .75em;
+  color: #e74c3c;
+  margin-top: 4px;
+  word-break: break-word;
+  display: block;
+}
+
+/* ======= Animación de entrada de ítems ======= */
+.list-item-enter {
+  animation: itemIn 0.28s cubic-bezier(.2,.8,.2,1);
+  will-change: transform, opacity;
+}
+@keyframes itemIn {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ======= Responsivo ======= */
