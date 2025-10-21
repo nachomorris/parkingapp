@@ -1,7 +1,7 @@
 // ---------- Firebase SDK (CDN v11) ----------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
-  getDatabase, ref, push, set, onValue, remove
+  getDatabase, ref, push, set, onValue, remove, get, query, orderByChild, equalTo
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
 // ---------- CONFIG ----------
@@ -44,11 +44,10 @@ function notifySubscribers() {
   const locals = getPendEntradas();
   const rem = lastRemoteList;
 
-  // Conjuntos para eliminar duplicados:
-  const remIds = new Set(rem.map(x => x.id));                                  // ids reales de server
-  const remOriginals = new Set(rem.map(x => x.idOriginal).filter(Boolean));    // ids locales ya subidos
+  const remIds = new Set(rem.map(x => x.id));
+  const remOriginals = new Set(rem.map(x => x.idOriginal).filter(Boolean));
 
-  // Quedarme sólo con locales que NO estén ya representados en remoto:
+  // Mostrar locales sólo si no están representados por un remoto con idOriginal
   const localsFiltered = locals.filter(v => !remIds.has(v.id) && !remOriginals.has(v.id));
 
   const merged = [...rem, ...localsFiltered]
@@ -67,7 +66,6 @@ function attachRemoteListenerOnce() {
       .sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
     notifySubscribers();
   }, () => {
-    // si hay error o sin red, mantenemos lo local
     notifySubscribers();
   });
 }
@@ -84,20 +82,17 @@ async function processQueues() {
 
     for (const item of entradas) {
       try {
-        // Subir entrada local creando id real en Firebase
         const key = push(ref(db, "estacionados")).key;
         await set(ref(db, `estacionados/${key}`), { id: key, ...item, idOriginal: item.id });
 
-        // Si había salida pendiente para ese id local, borramos inmediatamente el recién subido
+        // Si había salida pendiente para ese id local, borro el recién subido
         const idxSalida = salidas.findIndex(s => s.id === item.id);
         if (idxSalida !== -1) {
           try { await remove(ref(db, `estacionados/${key}`)); } catch {}
           salidas.splice(idxSalida, 1);
         }
-
-        // No re-agrego a remaining: ya subió (o subió y se borró)
       } catch (e) {
-        // falló subir, lo mantenemos pendiente
+        // dejar pendiente si falló
         remaining.push(item);
       }
     }
@@ -105,15 +100,15 @@ async function processQueues() {
     setPendSalidas(salidas);
   }
 
-  // 2) Ejecutar SALIDAS pendientes (para ids reales)
+  // 2) Ejecutar SALIDAS pendientes (ids reales)
   let salidas = getPendSalidas();
   if (salidas.length) {
     const remaining = [];
     const entradasPend = getPendEntradas();
 
     for (const s of salidas) {
-      // Si es local-... y la entrada aún está pendiente, no hay nada que borrar en server todavía
       if (String(s.id).startsWith("local-")) {
+        // si la entrada local aún está pendiente, todavía no hay qué borrar remoto
         if (entradasPend.some(e => e.id === s.id)) remaining.push(s);
         continue;
       }
@@ -137,7 +132,7 @@ export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) 
     await set(ref(db, `estacionados/${key}`), { id: key, placa, tipo, notas, entradaISO, horaTexto });
     return key;
   }
-  // Offline: crear id temporal local-...
+  // Offline: id temporal local-...
   const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
   const nuevo  = { id: tempId, placa, tipo, notas, entradaISO, horaTexto };
   const entradas = getPendEntradas();
@@ -149,24 +144,46 @@ export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) 
 export function onEstacionados(callback) {
   subs.push(callback);
   attachRemoteListenerOnce();
-  notifySubscribers();  // primer render inmediato (útil si arranca sin red)
-
+  notifySubscribers();
   return () => { subs = subs.filter(fn => fn !== callback); };
 }
 
+// ---- helper: buscar por idOriginal en remoto (consulta directa) ----
+async function findRemoteByOriginalId(idOriginal) {
+  try {
+    const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(idOriginal));
+    const snap = await get(q);
+    if (snap.exists()) {
+      const obj = snap.val();
+      // devolver el primer match {id, ...}
+      for (const [key, val] of Object.entries(obj)) {
+        return { id: key, ...val };
+      }
+    }
+  } catch {}
+  return null;
+}
+
 export async function removeEstacionado(id) {
-  // Si es un id local-...:
+  // Caso: id local
   if (String(id).startsWith("local-")) {
 
-    // Si hay red, intento encontrar su contraparte real (subida) por idOriginal
     if (isOnline()) {
-      const match = lastRemoteList.find(r => r.idOriginal === id);
-      if (match) {
+      // 1) intento con cache
+      let match = lastRemoteList.find(r => r.idOriginal === id);
+
+      // 2) si no está en cache, consulto al server
+      if (!match) {
+        match = await findRemoteByOriginalId(id);
+      }
+
+      // 3) si existe remoto -> lo borro
+      if (match && match.id) {
         try { await remove(ref(db, `estacionados/${match.id}`)); } catch {}
       }
     }
 
-    // En cualquier caso, lo quito de la cola local para que desaparezca de la UI
+    // Limpio la cola local para que desaparezca de UI
     const entradas = getPendEntradas().filter(e => e.id !== id);
     setPendEntradas(entradas);
 
@@ -177,7 +194,7 @@ export async function removeEstacionado(id) {
     return;
   }
 
-  // Si es un id real:
+  // Caso: id real
   if (isOnline()) {
     await remove(ref(db, `estacionados/${id}`));
     return;
