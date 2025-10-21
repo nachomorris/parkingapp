@@ -5,7 +5,7 @@ import { getDatabase, ref, push, set, onValue, remove } from "https://www.gstati
 
 // ---------- TU CONFIG ----------
 const firebaseConfig = {
-  apiKey: "AIzaSyBMdSRkAjfWGOP8cnTU2UEsbXBl3vTNIo",
+  apiKey: "AIzaSyBMdSRkAjfWGOP0cnTUI2UEsbXBI3vTNIo",
   authDomain: "parking-c5830.firebaseapp.com",
   databaseURL: "https://parking-c5830-default-rtdb.firebaseio.com",
   projectId: "parking-c5830",
