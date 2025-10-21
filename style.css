@@ -127,21 +127,6 @@ li button:hover {
   background: #c0392b;
 }
 
-/* ======= Extras mínimos para que todo lo tuyo funcione igual ======= */
-
-/* Botón "BORRAR FILTRO": oculto por defecto; visible cuando el JS le agrega .active */
-.clear-filter-btn {
-  display: none;
-}
-.clear-filter-btn.active {
-  display: inline-block;
-}
-
-/* Espacio al final de la lista para que no se tape el último vehículo */
-#listaEstacionados {
-  padding-bottom: 60px;
-}
-
 /* ======= Responsivo ======= */
 @media (max-width: 768px) {
   body {
