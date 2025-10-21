@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Historial de Salidas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ===== Base visual consistente con tu app ===== */
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Roboto',sans-serif;
+      background:linear-gradient(135deg,#f6d365 0%,#fda085 100%);
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:10px;
+    }
+    .container{
+      width:100%; max-width:1100px; background:#fff; border-radius:15px;
+      box-shadow:0 10px 30px rgba(0,0,0,.2); overflow:hidden;
+      display:flex; flex-direction:column;
+    }
+    header{
+      padding:18px 20px; background:#fff5f0; border-bottom:2px solid #fda085;
+      display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content:space-between;
+    }
+    header .title{font-size:1.4rem; font-weight:700; color:#333}
+    .filters{display:flex; gap:8px; flex-wrap:wrap}
+    .filters input{
+      padding:10px; border:2px solid #ddd; border-radius:8px; font-size:14px;
+    }
+    .filters button{
+      padding:10px 14px; background:#fda085; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;
+    }
+    .filters button:hover{ background:#f6d365; }
+
+    /* KPI cards */
+    .kpis{
+      display:grid; grid-template-columns: repeat(3,1fr); gap:12px; padding:12px 20px 4px 20px;
+    }
+    .kpi{
+      background:#f8f9fa; border:1px solid #eee; border-left:4px solid #fda085; border-radius:10px; padding:14px;
+    }
+    .kpi h4{ color:#555; font-size:.95rem; margin-bottom:6px; text-transform:uppercase; letter-spacing:.02em}
+    .kpi .val{ font-size:1.4rem; font-weight:700; color:#333}
+
+    /* Grids */
+    .grids{
+      display:grid; grid-template-columns: 2fr 1fr; gap:14px; padding:12px 20px 20px 20px;
+    }
+
+    /* Tabla principal */
+    .card{
+      background:#fff; border:1px solid #eee; border-radius:10px; overflow:hidden;
+    }
+    .card h3{
+      background:#fff5f0; border-bottom:1px solid #fda085; padding:10px 12px; font-size:1rem;
+      text-transform:uppercase; letter-spacing:.02em; color:#333;
+    }
+    .table-wrap{ max-height: 420px; overflow:auto; }
+    table{ width:100%; border-collapse:collapse; }
+    thead th{
+      position:sticky; top:0; background:#fff; z-index:1;
+      text-align:left; font-size:.85rem; color:#555; border-bottom:1px solid #eee; padding:10px;
+    }
+    tbody td{ padding:10px; border-bottom:1px solid #f1f1f1; font-size:.92rem; color:#333;}
+    tbody tr:hover{ background:#fafafa; }
+
+    /* Resumenes */
+    .list{
+      padding:8px 12px; max-height: 460px; overflow:auto;
+    }
+    .row{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 8px; border-bottom:1px dashed #eee;
+      font-size:.95rem;
+    }
+    .row .left{ color:#555; }
+    .row .right{ font-weight:700; color:#333; }
+
+    /* Footer actions */
+    footer{
+      display:flex; gap:8px; justify-content:flex-end; padding:12px 20px 16px 20px; border-top:1px solid #eee;
+    }
+    .btn{
+      padding:10px 14px; background:#e67e22; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700;
+    }
+    .btn:hover{ background:#d35400; }
+
+    /* Responsive */
+    @media (max-width: 960px){
+      .kpis{ grid-template-columns:1fr; }
+      .grids{ grid-template-columns: 1fr; }
+      .table-wrap{ max-height: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">Dashboard — Historial de Salidas</div>
+      <div class="filters">
+        <label>Desde: <input type="date" id="fromDate"></label>
+        <label>Hasta: <input type="date" id="toDate"></label>
+        <button id="applyRange">Aplicar</button>
+        <button id="last7">Últimos 7 días</button>
+        <button id="last30">Últimos 30 días</button>
+      </div>
+    </header>
+
+    <section class="kpis">
+      <div class="kpi">
+        <h4>Entradas (salidas registradas)</h4>
+        <div class="val" id="kpiCount">–</div>
+      </div>
+      <div class="kpi">
+        <h4>Recaudación total</h4>
+        <div class="val" id="kpiRevenue">$–</div>
+      </div>
+      <div class="kpi">
+        <h4>Promedio por salida</h4>
+        <div class="val" id="kpiAvg">$–</div>
+      </div>
+    </section>
+
+    <section class="grids">
+      <div class="card">
+        <h3>Detalle de salidas</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Patente</th>
+                <th>Tipo</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Duración</th>
+                <th>Cobrado</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Resumen</h3>
+        <div class="list" id="summary">
+          <!-- por día y por tipo -->
+          <div class="row"><div class="left">Cargando…</div><div class="right"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <button class="btn" id="exportCsv">Exportar CSV</button>
+    </footer>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { db } from './firebase.js';
+    import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+    // ====== Config tarifas (fallback si falta totalCobrado) ======
+    const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
+
+    // ====== Estado ======
+    let all = [];        // todas las salidas
+    let filtered = [];   // filtradas por rango
+    let from = null, to = null;
+
+    // ====== Utiles ======
+    const $ = (id) => document.getElementById(id);
+    const fmtMoney = (n) => '$' + (Math.round(n) || 0).toLocaleString('es-AR');
+
+    function parseISO(s){
+      try { return new Date(s); } catch { return null; }
+    }
+    function dateKey(d){ // YYYY-MM-DD
+      return d.toISOString().slice(0,10);
+    }
+    function formatHM(totalMin){
+      const h = Math.floor(totalMin/60), m = totalMin%60;
+      if(h && m) return `${h} h ${m} min`;
+      if(h) return `${h} h`;
+      return `${m} min`;
+    }
+    function computeCharge(item){
+      // Si ya viene calculado, usarlo
+      if (typeof item.totalCobrado === 'number') return item.totalCobrado;
+      // Sino, calcular con reglas: 1ra hora completa + bloques 30' arriba de la hora
+      const tarifa = TARIFAS[item.tipo] ?? TARIFAS.auto;
+      const entrada = parseISO(item.entradaISO);
+      const salida  = parseISO(item.salidaISO);
+      if (!entrada || !salida) return 0;
+      const min = Math.max(1, Math.ceil((salida-entrada)/60000));
+      let total = tarifa;
+      const resto = Math.max(0, min - 60);
+      total += Math.ceil(resto/30) * (tarifa/2);
+      return Math.round(total);
+    }
+    function computeDurText(item){
+      if (item.duracionTexto) return item.duracionTexto;
+      const entrada = parseISO(item.entradaISO);
+      const salida  = parseISO(item.salidaISO);
+      if (!entrada || !salida) return '';
+      const min = Math.max(1, Math.ceil((salida-entrada)/60000));
+      return formatHM(min);
+    }
+
+    // ====== Rango por defecto (últimos 7 días) ======
+    function setDefaultRange(days=7){
+      const end = new Date();           // hoy
+      const start = new Date();
+      start.setDate(end.getDate() - (days-1));
+      from = start; to = end;
+      $('fromDate').value = dateKey(start);
+      $('toDate').value   = dateKey(end);
+    }
+
+    // ====== Cargar datos ======
+    onValue(ref(db, 'salidas'), (snap)=>{
+      const val = snap.val() || {};
+      all = Object.values(val).map(x => ({
+        ...x,
+        // normalizar strings
+        placa: (x.placa||'').toUpperCase(),
+        tipo: (x.tipo||'auto')
+      })).sort((a,b)=>{
+        // ordenar por salida desc (o entrada si no hay salida)
+        const aa = parseISO(a.salidaISO) || parseISO(a.entradaISO) || 0;
+        const bb = parseISO(b.salidaISO) || parseISO(b.entradaISO) || 0;
+        return bb - aa;
+      });
+      if (!from || !to) setDefaultRange(7);
+      applyFilter();
+    });
+
+    // ====== Filtros ======
+    function applyFilter(){
+      const f = new Date($('fromDate').value + 'T00:00:00');
+      const t = new Date($('toDate').value   + 'T23:59:59');
+      from = f; to = t;
+
+      filtered = all.filter(x=>{
+        const d = parseISO(x.salidaISO) || parseISO(x.entradaISO);
+        if (!d) return false;
+        return d >= from && d <= to;
+      });
+      render();
+    }
+
+    $('applyRange').addEventListener('click', applyFilter);
+    $('last7').addEventListener('click', ()=>{ setDefaultRange(7); applyFilter(); });
+    $('last30').addEventListener('click',()=>{ setDefaultRange(30); applyFilter(); });
+
+    // ====== Render ======
+    function render(){
+      // KPIs
+      const totalCount = filtered.length;
+      const totalRevenue = filtered.reduce((s,x)=> s + computeCharge(x), 0);
+      const avg = totalCount ? (totalRevenue / totalCount) : 0;
+
+      $('kpiCount').textContent = totalCount.toString();
+      $('kpiRevenue').textContent = fmtMoney(totalRevenue);
+      $('kpiAvg').textContent = fmtMoney(avg);
+
+      // Tabla
+      const tb = $('tbody');
+      tb.innerHTML = '';
+      filtered.forEach(x=>{
+        const tr = document.createElement('tr');
+
+        const entrada = parseISO(x.entradaISO);
+        const salida  = parseISO(x.salidaISO);
+        const durTxt  = computeDurText(x);
+        const cobro   = computeCharge(x);
+
+        const tdPlaca   = `<td>${x.placa||''}</td>`;
+        const tdTipo    = `<td>${x.tipo||''}</td>`;
+        const tdEntrada = `<td>${entrada ? entrada.toLocaleString([], { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'}) : ''}</td>`;
+        const tdSalida  = `<td>${salida ?  salida.toLocaleString([], { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'}) : ''}</td>`;
+        const tdDur     = `<td>${durTxt}</td>`;
+        const tdCobro   = `<td>${fmtMoney(cobro)}</td>`;
+
+        tr.innerHTML = tdPlaca + tdTipo + tdEntrada + tdSalida + tdDur + tdCobro;
+        tb.appendChild(tr);
+      });
+
+      // Resumen por día y por tipo
+      const byDay = {};     // { 'YYYY-MM-DD': { count, revenue } }
+      const byType = { auto:{c:0,$:0}, camioneta:{c:0,$:0}, moto:{c:0,$:0} };
+
+      filtered.forEach(x=>{
+        const d = parseISO(x.salidaISO) || parseISO(x.entradaISO);
+        if (!d) return;
+        const k = dateKey(d);
+        const cobro = computeCharge(x);
+
+        byDay[k] = byDay[k] || { count:0, revenue:0 };
+        byDay[k].count += 1;
+        byDay[k].revenue += cobro;
+
+        const bt = byType[x.tipo] || (byType[x.tipo]={c:0,$:0});
+        bt.c += 1; bt.$ += cobro;
+      });
+
+      const summary = $('summary');
+      summary.innerHTML = '';
+
+      // Bloque por día
+      const days = Object.entries(byDay).sort((a,b)=> a[0] < b[0] ? 1 : -1);
+      if (days.length){
+        const title = document.createElement('div');
+        title.className = 'row';
+        title.innerHTML = `<div class="left"><strong>Por día</strong></div><div class="right"></div>`;
+        summary.appendChild(title);
+        days.forEach(([k,v])=>{
+          const div = document.createElement('div');
+          div.className = 'row';
+          div.innerHTML = `<div class="left">${k}</div><div class="right">${v.count} · ${fmtMoney(v.revenue)}</div>`;
+          summary.appendChild(div);
+        });
+      }
+
+      // Bloque por tipo
+      const title2 = document.createElement('div');
+      title2.className = 'row';
+      title2.innerHTML = `<div class="left"><strong>Por tipo</strong></div><div class="right"></div>`;
+      summary.appendChild(title2);
+
+      ['auto','camioneta','moto'].forEach(t=>{
+        const v = byType[t];
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.innerHTML = `<div class="left">${t.toUpperCase()}</div><div class="right">${v.c} · ${fmtMoney(v.$)}</div>`;
+        summary.appendChild(div);
+      });
+    }
+
+    // ====== Exportar CSV ======
+    function toCsv(rows){
+      return rows.map(r => r.map(v => {
+        const s = String(v ?? '');
+        if (s.includes(';') || s.includes('"') || s.includes('\n')){
+          return `"${s.replace(/"/g,'""')}"`;
+        }
+        return s;
+      }).join(';')).join('\n');
+    }
+    $('exportCsv').addEventListener('click', ()=>{
+      const rows = [
+        ['Patente','Tipo','Entrada','Salida','Duración','Cobrado']
+      ];
+      filtered.forEach(x=>{
+        const entrada = parseISO(x.entradaISO);
+        const salida  = parseISO(x.salidaISO);
+        const durTxt  = computeDurText(x);
+        const cobro   = computeCharge(x);
+        rows.push([
+          x.placa || '',
+          x.tipo || '',
+          entrada ? entrada.toLocaleString() : '',
+          salida  ? salida.toLocaleString()  : '',
+          durTxt,
+          cobro
+        ]);
+      });
+      const csv = toCsv(rows);
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const fromTxt = $('fromDate').value; const toTxt = $('toDate').value;
+      a.download = `salidas_${fromTxt}_a_${toTxt}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Inicializa rango por defecto cuando carga el DOM
+    document.addEventListener('DOMContentLoaded', ()=>{
+      setDefaultRange(7);
+    });
+  </script>
+</body>
+</html>
