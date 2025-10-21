@@ -7,6 +7,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 
+  <style>
+    /* 🔸 Animación de entrada para los ítems */
+    .list-item-enter {
+      animation: fadeSlideIn 0.3s ease forwards;
+    }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+
   <!-- Firebase -->
   <script type="module" src="./firebase.js"></script>
 </head>
@@ -32,7 +50,7 @@
 
     <div class="list-section">
       <h2>ESTACIONADOS: <span id="count">0</span></h2>
-      <input type="text" id="searchInput" placeholder="BUSCAR PATENTE">
+      <input type="text" id="searchInput" placeholder="Buscar placa...">
       <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
       <div class="table-header"></div>
       <ul id="listaEstacionados"></ul>
@@ -55,10 +73,11 @@
   <!-- Toast -->
   <div id="toast" class="toast"></div>
 
-  <!-- Lógica -->
+  <!-- Lógica de página -->
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
+    // ---- Refs UI ----
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
@@ -77,7 +96,7 @@
     const changeOutput = document.getElementById('changeOutput');
     const confirmButton = document.getElementById('confirmButton');
 
-    // Tipo seleccionado
+    // ---- Tipo seleccionado ----
     let tipoSeleccionado = 'auto';
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -87,22 +106,14 @@
       });
     });
 
-    // Hora viva
-    function updateEntryTime(){
-      inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-    }
-    updateEntryTime();
-    setInterval(updateEntryTime, 60000);
+    // ---- Hora viva ----
+    function updateEntryTime(){ inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}); }
+    updateEntryTime(); setInterval(updateEntryTime, 60_000);
 
-    // Toast
-    function toast(msg){
-      const t=document.getElementById('toast');
-      t.textContent=msg;
-      t.className='toast show';
-      setTimeout(()=>t.className='toast', 1800);
-    }
+    // ---- Toast ----
+    function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast', 1800); }
 
-    // Entrada
+    // ---- ENTRADA ----
     btnEntrada.addEventListener('click', async (e)=>{
       e.preventDefault();
       const placa = (inputPatente.value||'').trim().toUpperCase();
@@ -115,116 +126,96 @@
         entradaISO: d.toISOString(),
         horaTexto: d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
-      inputPatente.value='';
-      inputNotas.value='';
-      inputPatente.focus();
+      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
+      toast('Vehículo ingresado');
+
+      // 🔄 Volver a auto por defecto
+      tipoSeleccionado = 'auto';
       document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
       document.querySelector('[data-tipo="auto"]').classList.add('active');
-      tipoSeleccionado='auto';
-      toast('Vehículo ingresado');
     });
 
+    // Permitir Enter para registrar
     inputPatente.addEventListener('keypress', (e)=>{
-      if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); }
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        btnEntrada.click();
+      }
     });
 
-    // Listado
+    // ---- LISTADO en tiempo real ----
     let cache = [];
     onEstacionados((items)=>{ cache = items||[]; render(); });
 
     function render(){
       const term = (searchInput.value||'').trim().toUpperCase();
       const filtered = term ? cache.filter(v => (v.placa||'').toUpperCase().includes(term)) : cache;
+
       lista.innerHTML = '';
       countEl.textContent = cache.length;
 
       filtered.forEach(v=>{
         const li = document.createElement('li');
-        li.className = 'in-parking list-item-enter'; // ✅ animación de entrada
+        li.className = 'in-parking';
 
         const emoji = v.tipo==='camioneta' ? '🚐' : (v.tipo==='moto' ? '🏍️' : '🚗');
-        const hora  = v.entradaISO
-          ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-          : (v.horaTexto||'');
+        const hora  = v.entradaISO ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : (v.horaTexto||'');
 
         const left = document.createElement('div');
-        const plate = document.createElement('span');
-        plate.className='plate';
-        plate.textContent = `${emoji} ${v.placa}`;
-        const time = document.createElement('span');
-        time.className='time';
-        time.textContent = hora;
-        left.appendChild(plate);
-        left.appendChild(time);
-        if (v.notas){
-          const n=document.createElement('span');
-          n.className='note';
-          n.textContent=v.notas;
-          left.appendChild(n);
-        }
+        const plate = document.createElement('span'); plate.className='plate'; plate.textContent = `${emoji} ${v.placa}`;
+        const time  = document.createElement('span'); time.className='time'; time.textContent = hora;
+        left.appendChild(plate); left.appendChild(time);
+        if (v.notas){ const n=document.createElement('span'); n.className='note'; n.textContent=v.notas; left.appendChild(n); }
 
-        const del = document.createElement('button');
-        del.className='delete-btn';
-        del.textContent='SALIDA';
+        const del = document.createElement('button'); del.className='delete-btn'; del.textContent='SALIDA';
         del.addEventListener('click', ()=>openExitModal(v));
 
         li.appendChild(left);
         li.appendChild(del);
         lista.appendChild(li);
+
+        // ✨ Animación de entrada
+        requestAnimationFrame(() => li.classList.add('list-item-enter'));
       });
 
-      // Padding para que el último no quede tapado
-      const pad = document.createElement('div');
-      pad.style.height = '20px';
-      lista.appendChild(pad);
-
+      // datalist de sugerencias
       const dl = document.getElementById('placaSuggestions');
       dl.innerHTML = '';
       [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
-        const opt=document.createElement('option');
-        opt.value=p;
-        dl.appendChild(opt);
+        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
       });
     }
 
-    // Buscar
-    function toggleClearBtn(){
-      const hasText = (searchInput.value || '').length > 0;
-      clearBtn.classList.toggle('active', hasText);
-    }
-    searchInput.addEventListener('input', ()=>{ toggleClearBtn(); render(); });
-    clearBtn.addEventListener('click', ()=>{
-      searchInput.value='';
-      toggleClearBtn();
-      render();
-    });
-    toggleClearBtn();
+    searchInput.addEventListener('input', render);
+    clearBtn.addEventListener('click', ()=>{ searchInput.value=''; render(); });
 
-    // Modal salida
-    let currentItem = null;
-    let cobro = 0;
-    const TARIFAS = { auto:1800, camioneta:2000, moto:1300 };
+    // ---- Modal SALIDA ----
+    let currentItem = null; let cobro = 0;
+    const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
 
     function openExitModal(item){
-      currentItem=item;
+      currentItem = item;
       const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
-      const salida = new Date();
-      const diffMs = salida - entrada;
-      const min = Math.ceil(diffMs/60000);
-      const horas = Math.floor(min/60);
-      const minutos = min % 60;
+      const salida  = new Date();
+      const min = Math.max(1, Math.ceil((salida-entrada)/60000));
 
       const tarifaHora = TARIFAS[item.tipo] ?? TARIFAS.auto;
+      const horas = Math.floor(min / 60);
+      const resto = min % 60;
+
       let total = tarifaHora;
-      if (horas > 0) total += (horas - 1) * tarifaHora;
-      total += Math.floor(minutos / 30) * (tarifaHora / 2);
+      if (horas > 0) total += horas * tarifaHora;
+      if (resto >= 30) total += tarifaHora / 2;
 
       cobro = Math.round(total);
+
+      const horasTexto = horas > 0 ? `${horas}h ` : '';
+      const minutosTexto = resto > 0 ? `${resto}m` : '';
+
       exitTitle.textContent = item.placa.toUpperCase();
-      exitInfo.innerHTML = `Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}<br>Tiempo: ${horas}h ${minutos}m`;
+      exitInfo.innerHTML = `Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${horasTexto}${minutosTexto}`;
       exitAmount.textContent = `$${cobro}`;
-      paymentInput.value='';
-      changeOutput.textContent='Vuelto: $0';
+      paymentInput.value=''; changeOutput.textContent='Vuelto: $0';
       exitModal.style.display='flex';
     }
 
@@ -239,7 +230,7 @@
       await removeEstacionado(currentItem.id);
       exitModal.style.display='none';
       toast('Salida confirmada');
-      currentItem=null;
+      currentItem = null;
     });
     closeModal.addEventListener('click', ()=>{ exitModal.style.display='none'; currentItem=null; });
     document.addEventListener('keydown', (e)=>{
