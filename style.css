@@ -102,7 +102,7 @@ button:hover {
 ul {
   list-style: none;
   margin: 0;
-  padding: 0 0 60px 0; /* ⬅️ agregado: espacio al final para que no se tape el último ítem */
+  padding: 0;
 }
 
 li {
@@ -141,15 +141,4 @@ li button:hover {
   .list-section {
     padding: 10px;
   }
-}
-
-/* ======= (Nuevo) Animación de entrada de ítems ======= */
-/* No cambia colores ni distribución; solo un efecto suave cuando aparece un <li> */
-.list-item-enter {
-  animation: itemIn 0.28s cubic-bezier(.2,.8,.2,1);
-  will-change: transform, opacity;
-}
-@keyframes itemIn {
-  from { opacity: 0; transform: translateY(10px) scale(.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
