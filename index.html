@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestor de Estacionamiento</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
-  <!-- ⭐ Mantengo tus estilos tal cual -->
   <style>
-    /* ==== TUS ESTILOS EXISTENTES (idénticos) ==== */
+    /* ---- Tus estilos (idénticos) ---- */
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
     body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
     body.dark-mode{background:#3a3f44;color:#fff}
@@ -54,8 +52,6 @@
     .dark-mode li{background:#3a3f44;border-color:#555;border-left-color:#7f8c8d}
     .in-parking{border-left-color:#4a90e2}
     .dark-mode .in-parking{border-left-color:#7f8c8d}
-    .used{border-left-color:#f1c40f}
-    .dark-mode .used{border-left-color:#f39c12}
     .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
     .dark-mode .plate{color:#fff}
     .time{font-size:.8em;color:#666;margin-top:4px;display:block}
@@ -87,9 +83,9 @@
     @media (max-width:768px){
       .container{flex-direction:column;max-width:100%;margin:0;border-radius:0}
       .form-section,.list-section{width:100%;padding:10px}
-      .form-section{border-radius:0}.list-section{border-radius:0}
-      .ingreso input#placa{font-size:1em}button{font-size:1em;padding:10px}
-      .vehicle-btn{font-size:18px;padding:6px}.delete-btn{font-size:14px;padding:4px 10px}
+      .ingreso input#placa{font-size:1em}
+      button{font-size:1em;padding:10px}
+      .vehicle-btn{font-size:18px;padding:6px}
       .plate{font-size:1.2em}.time{font-size:.7em}.note{font-size:.6em}
       .modal-content{width:85%;max-width:350px;padding:15px}
       .modal-content h3{font-size:1.5em}.modal-content .amount{font-size:1.5em}
@@ -98,7 +94,6 @@
     }
   </style>
 
-  <!-- Carga del módulo Firebase (tu archivo) -->
   <script type="module" src="./firebase.js"></script>
 </head>
 <body>
@@ -133,7 +128,7 @@
     </div>
   </div>
 
-  <!-- Modal salida -->
+  <!-- Modal -->
   <div id="exitModal" class="modal">
     <div class="modal-content">
       <span class="close-modal" id="closeModal">&times;</span>
@@ -146,14 +141,12 @@
     </div>
   </div>
 
-  <!-- Toast -->
   <div id="toast" class="toast"></div>
 
-  <!-- Lógica de página: Firebase + UI -->
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
-    // --- Tema ---
+    // ---- Tema ----
     const themeToggle = document.getElementById('themeToggle');
     const container = document.querySelector('.container');
     const configLinks = document.querySelectorAll('.config-link');
@@ -168,7 +161,7 @@
       localStorage.setItem('theme', on ? 'dark' : 'light');
     }
 
-    // --- Refs UI ---
+    // ---- Refs UI ----
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
@@ -187,7 +180,7 @@
     const changeOutput = document.getElementById('changeOutput');
     const confirmButton = document.getElementById('confirmButton');
 
-    // --- Tipo seleccionado ---
+    // ---- Tipo seleccionado ----
     let tipoSeleccionado = 'auto';
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -197,24 +190,18 @@
       });
     });
 
-    // --- Hora en vivo ---
-    function updateEntryTime(){
-      inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-    }
+    // ---- Hora viva ----
+    function updateEntryTime(){ inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}); }
     updateEntryTime(); setInterval(updateEntryTime, 60_000);
 
-    // --- Toast ---
-    function toast(msg){
-      const t = document.getElementById('toast');
-      t.textContent = msg; t.className = 'toast show';
-      setTimeout(()=>t.className='toast', 1800);
-    }
+    // ---- Toast ----
+    function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast', 1800); }
 
-    // --- ENTRADA (guardar en Firebase) ---
+    // ---- ENTRADA (Firebase) ----
     btnEntrada.addEventListener('click', async (e)=>{
       e.preventDefault();
       const placa = (inputPatente.value||'').trim().toUpperCase();
-      if (!placa) { toast('Ingresá la patente'); inputPatente.focus(); return; }
+      if (!placa){ toast('Ingresá la patente'); inputPatente.focus(); return; }
       const d = new Date();
       await addEntrada({
         placa,
@@ -223,16 +210,13 @@
         entradaISO: d.toISOString(),
         horaTexto: d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
-      inputPatente.value = ''; inputNotas.value = ''; inputPatente.focus();
+      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
       toast('Vehículo ingresado');
     });
 
-    // --- LISTADO en tiempo real ---
+    // ---- LISTADO en tiempo real ----
     let cache = [];
-    onEstacionados((items)=>{
-      cache = items || [];
-      render();
-    });
+    onEstacionados((items)=>{ cache = items||[]; render(); });
 
     function render(){
       const term = (searchInput.value||'').trim().toUpperCase();
@@ -244,13 +228,14 @@
       filtered.forEach(v=>{
         const li = document.createElement('li');
         li.className = 'in-parking';
-        const hora = v.entradaISO ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : (v.horaTexto||'');
-        const emoji = v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
+
+        const emoji = v.tipo==='camioneta' ? '🚐' : (v.tipo==='moto' ? '🏍️' : '🚗');
+        const hora  = v.entradaISO ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : (v.horaTexto||'');
 
         const left = document.createElement('div');
-        const plateSpan = document.createElement('span'); plateSpan.className='plate'; plateSpan.textContent = `${emoji} ${v.placa}`;
-        const timeSpan  = document.createElement('span'); timeSpan.className='time'; timeSpan.textContent = hora;
-        left.appendChild(plateSpan); left.appendChild(timeSpan);
+        const plate = document.createElement('span'); plate.className='plate'; plate.textContent = `${emoji} ${v.placa}`;
+        const time  = document.createElement('span'); time.className='time'; time.textContent = hora;
+        left.appendChild(plate); left.appendChild(time);
         if (v.notas){ const n=document.createElement('span'); n.className='note'; n.textContent=v.notas; left.appendChild(n); }
 
         const del = document.createElement('button'); del.className='delete-btn'; del.textContent='SALIDA';
@@ -260,7 +245,7 @@
         lista.appendChild(li);
       });
 
-      // Sugerencias (máx 5)
+      // datalist de sugerencias
       const dl = document.getElementById('placaSuggestions');
       dl.innerHTML = '';
       [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
@@ -269,27 +254,26 @@
     }
 
     searchInput.addEventListener('input', render);
-    clearBtn.addEventListener('click', ()=>{searchInput.value=''; render();});
+    clearBtn.addEventListener('click', ()=>{ searchInput.value=''; render(); });
     inputPatente.addEventListener('keypress', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); } });
 
-    // --- Modal SALIDA (solo elimina por ahora) ---
+    // ---- Modal SALIDA (por ahora elimina en Firebase) ----
     let currentItem = null; let cobro = 0;
     function openExitModal(item){
       currentItem = item;
       const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
-      const salida = new Date();
+      const salida  = new Date();
       const min = Math.max(1, Math.ceil((salida-entrada)/60000));
-      // tarifa simple temporal (podemos cambiarla según config.html más adelante)
-      const tarifaHora = item.tipo==='moto'?3: item.tipo==='camioneta'?7:5;
-      const horas = Math.floor(min/60);
-      const resto = min%60;
+
+      const tarifaHora = item.tipo==='moto'?3 : item.tipo==='camioneta'?7 : 5; // simple por ahora
+      const horas = Math.floor(min/60); const resto = min%60;
       let total = tarifaHora; if(horas>0) total += (horas-1)*tarifaHora; total += Math.floor(resto/30)*(tarifaHora/2);
       cobro = Math.round(total);
 
       exitTitle.textContent = item.placa.toUpperCase();
       exitInfo.innerHTML = `Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Tiempo: ${min} minutos`;
       exitAmount.textContent = `$${cobro}`;
-      paymentInput.value=''; changeOutput.textContent = 'Vuelto: $0';
+      paymentInput.value=''; changeOutput.textContent='Vuelto: $0';
       exitModal.style.display='flex';
       if (document.body.classList.contains('dark-mode')) exitModal.querySelector('.modal-content').classList.add('dark-mode');
     }
@@ -307,13 +291,13 @@
       toast('Salida confirmada');
       currentItem = null;
     });
-
-    closeModal.addEventListener('click', ()=>{ exitModal.style.display='none'; currentItem=null; });
-
+    document.getElementById('closeModal').addEventListener('click', ()=>{
+      exitModal.style.display='none'; currentItem=null;
+    });
     document.addEventListener('keydown', (e)=>{
       if (exitModal.style.display==='flex'){
         if (e.key==='Enter') confirmButton.click();
-        if (e.key==='Escape') closeModal.click();
+        if (e.key==='Escape') document.getElementById('closeModal').click();
       }
     });
   </script>
