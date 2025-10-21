@@ -17,3 +17,10 @@ const firebaseConfig = {
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 console.log("Firebase OK ✅", app.name);
+
+window.firebasePing = async () => {
+  await authReady;
+  const key = push(ref(db, path("ping"))).key;
+  await set(ref(db, path(`ping/${key}`)), { ts: new Date().toISOString() });
+  console.log("DB OK ✅ ping subido:", key);
+};
