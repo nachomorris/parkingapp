@@ -14,7 +14,16 @@
     .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
 
     .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
-    .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
+    .list-section{
+      width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0;
+      /* 👇 asegura que el último ítem no quede tapado */
+      padding-bottom: 48px;
+      position: relative;
+    }
+    /* espaciador visual al final (por si el SO/scroll deja muy pegado el último ítem) */
+    .list-section::after{
+      content:""; display:block; height:24px;
+    }
 
     h2{color:#333;margin:0 0 10px 0;font-size:1.3em;text-transform:uppercase}
 
@@ -46,7 +55,8 @@
 
     .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
     .time{font-size:.8em;color:#666;margin-top:4px;display:block}
-    .time::after{content:" hs."}
+    /* ⛔ se quita el "hs." automático */
+    /* .time::after{content:" hs."} */
     .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
 
     .table-header{display:none}
@@ -108,7 +118,9 @@
 
     <div class="list-section">
       <h2>ESTACIONADOS: <span id="count">0</span></h2>
-      <input type="text" id="searchInput" placeholder="Buscar placa...">
+      <!-- placeholder cambiado -->
+      <input type="text" id="searchInput" placeholder="BUSCAR PATENTE">
+      <!-- se muestra sólo con texto -->
       <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
       <div class="table-header"></div>
       <ul id="listaEstacionados"></ul>
@@ -156,6 +168,10 @@
 
     // ---- Tipo seleccionado ----
     let tipoSeleccionado = 'auto';
+    const autoBtn = document.getElementById('autoBtn');
+    const camionetaBtn = document.getElementById('camionetaBtn');
+    const motoBtn = document.getElementById('motoBtn');
+
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
@@ -171,6 +187,16 @@
     // ---- Toast ----
     function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast', 1800); }
 
+    // ---- Mostrar/ocultar botón "Borrar filtro" ----
+    function toggleClearBtn(){
+      const hasText = (searchInput.value || '').trim().length > 0;
+      clearBtn.classList.toggle('active', hasText);
+    }
+    searchInput.addEventListener('input', ()=>{ toggleClearBtn(); render(); });
+    clearBtn.addEventListener('click', ()=>{ searchInput.value=''; toggleClearBtn(); render(); });
+    // estado inicial
+    toggleClearBtn();
+
     // ---- ENTRADA ----
     btnEntrada.addEventListener('click', async (e)=>{
       e.preventDefault();
@@ -184,7 +210,14 @@
         entradaISO: d.toISOString(),
         horaTexto: d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
+
+      // Reset UI + vuelve a AUTO preseleccionado
       inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
+      tipoSeleccionado = 'auto';
+      autoBtn.classList.add('active');
+      camionetaBtn.classList.remove('active');
+      motoBtn.classList.remove('active');
+
       toast('Vehículo ingresado');
     });
 
@@ -218,18 +251,16 @@
         li.appendChild(left); li.appendChild(del);
         lista.appendChild(li);
       });
-
-      // datalist de sugerencias
-      const dl = document.getElementById('placaSuggestions');
-      dl.innerHTML = '';
-      [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
-        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
-      });
     }
 
-    searchInput.addEventListener('input', render);
-    clearBtn.addEventListener('click', ()=>{ searchInput.value=''; render(); });
-    inputPatente.addEventListener('keypress', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); } });
+    // ---- Util: formato "X h Y min" ----
+    function formatHM(totalMin){
+      const h = Math.floor(totalMin/60);
+      const m = totalMin%60;
+      if (h <= 0) return `${m} min`;
+      if (m <= 0) return `${h} h`;
+      return `${h} h ${m} min`;
+    }
 
     // ---- Modal SALIDA ----
     let currentItem = null; let cobro = 0;
@@ -245,7 +276,7 @@
       currentItem = item;
       const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
       const salida  = new Date();
-      const min = Math.max(1, Math.ceil((salida-entrada)/60000));
+      const min = Math.max(1, Math.ceil((salida-entrada) / 60000));
 
       // 1ra hora completa + luego cada 30 min = mitad de la hora
       const tarifaHora = TARIFAS[item.tipo] ?? TARIFAS.auto;
@@ -253,13 +284,17 @@
       const resto = min % 60;
 
       let total = tarifaHora; // primera hora completa
-      if (horas > 0) total += (horas - 1) * tarifaHora;            // horas completas adicionales
-      total += Math.floor(resto / 30) * (tarifaHora / 2);          // fracciones de 30 min
+      if (horas > 0) total += (horas - 1) * tarifaHora;   // horas completas adicionales
+      total += Math.floor(resto / 30) * (tarifaHora / 2); // fracciones de 30 min
 
       cobro = Math.round(total);
 
       exitTitle.textContent = item.placa.toUpperCase();
-      exitInfo.innerHTML = `Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Tiempo: ${min} minutos`;
+      // ⛔ se quitan los "hs." y se muestra duración en h/min
+      const txtEntrada = entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+      const txtSalida  = salida .toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+      const txtDur    = formatHM(min);
+      exitInfo.innerHTML = `Entrada: ${txtEntrada}<br>Salida: ${txtSalida}<br>Tiempo: ${txtDur}`;
       exitAmount.textContent = `$${cobro}`;
       paymentInput.value=''; changeOutput.textContent='Vuelto: $0';
       exitModal.style.display='flex';
@@ -268,7 +303,7 @@
     paymentInput.addEventListener('input', ()=>{
       const pago = parseFloat(paymentInput.value)||0;
       const vuelto = pago - cobro;
-      changeOutput.textContent = `Vuelto: ${vuelto>=0? '$'+vuelto : 'Pago insuficiente'}`;
+      changeOutput.textContent = `Vuelto: ${vuelto>=0 ? '$'+vuelto : 'Pago insuficiente'}`;
     });
 
     confirmButton.addEventListener('click', async ()=>{
