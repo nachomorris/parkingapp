@@ -1,53 +1,77 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestor de Estacionamiento</title>
+  <link rel="stylesheet" href="style.css">
 
-  <!-- Asegurate de subir este style.css y usar cache-busting -->
-  <link rel="stylesheet" href="style.css?v=4">
+  <style>
+    /* === Evitar scroll general === */
+    html, body {
+      height: 100%;
+      overflow: hidden; /* bloquea scroll global */
+    }
 
-  <!-- Tu módulo de Firebase (ya apuntando a /estacionados) -->
+    .container {
+      height: 100vh;                /* ocupa toda la pantalla */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;             /* evita que el contenedor scrollee */
+    }
+
+    /* Solo la sección de lista puede desplazarse */
+    .list-section {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;             /* ✅ solo esta parte scrollea */
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Barra de scroll más sutil */
+    .list-section::-webkit-scrollbar { width: 6px; }
+    .list-section::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,.25);
+      border-radius: 6px;
+    }
+  </style>
+
   <script type="module" src="./firebase.js"></script>
 </head>
+
 <body>
   <div class="container">
     <h1>Gestor de Estacionamiento</h1>
 
-    <!-- Sección de ingreso (fija) -->
+    <!-- Sección fija: ingreso -->
     <div class="form-section">
       <section class="ingreso">
         <h2>INGRESO DE VEHÍCULO</h2>
-
         <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off">
         <input type="text" id="entryTime" value="" readonly>
         <datalist id="placaSuggestions"></datalist>
-
         <input type="text" id="notas" placeholder="Notas">
 
         <div style="display:flex; gap:10px; margin:10px 0;">
-          <button id="autoBtn"     class="vehicle-btn active" data-tipo="auto">🚗</button>
-          <button id="camionetaBtn" class="vehicle-btn"       data-tipo="camioneta">🚐</button>
-          <button id="motoBtn"      class="vehicle-btn"       data-tipo="moto">🏍️</button>
+          <button id="autoBtn" class="vehicle-btn active" data-tipo="auto">🚗</button>
+          <button id="camionetaBtn" class="vehicle-btn" data-tipo="camioneta">🚐</button>
+          <button id="motoBtn" class="vehicle-btn" data-tipo="moto">🏍️</button>
         </div>
 
         <button id="btn-entrada">ENTRADA</button>
       </section>
     </div>
 
-    <!-- Sección de lista (la ÚNICA que scrollea) -->
+    <!-- Sección que sí scrollea -->
     <div class="list-section">
       <h2>ESTACIONADOS: <span id="count">0</span></h2>
-
       <input type="text" id="searchInput" placeholder="Buscar placa...">
       <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
-
       <ul id="listaEstacionados"></ul>
     </div>
   </div>
 
-  <!-- Modal de salida -->
+  <!-- Modal -->
   <div id="exitModal" class="modal" style="display:none;">
     <div class="modal-content">
       <span class="close-modal" id="closeModal">&times;</span>
@@ -66,7 +90,6 @@
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
-    // ---- UI refs ----
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
@@ -75,7 +98,6 @@
     const countEl      = document.getElementById('count');
     const searchInput  = document.getElementById('searchInput');
     const clearBtn     = document.getElementById('clearFilterBtn');
-
     const exitModal     = document.getElementById('exitModal');
     const closeModal    = document.getElementById('closeModal');
     const exitTitle     = document.getElementById('exitTitle');
@@ -85,7 +107,6 @@
     const changeOutput  = document.getElementById('changeOutput');
     const confirmButton = document.getElementById('confirmButton');
 
-    // ---- Tipo seleccionado ----
     let tipoSeleccionado = 'auto';
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -95,13 +116,11 @@
       });
     });
 
-    // ---- Hora viva ----
     function updateEntryTime(){
       inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
     }
     updateEntryTime(); setInterval(updateEntryTime, 60_000);
 
-    // ---- Toast ----
     function toast(msg){
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -110,7 +129,6 @@
       setTimeout(()=>{ t.className='toast'; t.style.display='none'; }, 1800);
     }
 
-    // ---- ENTRADA (escribe en /estacionados) ----
     btnEntrada.addEventListener('click', async (e)=>{
       e.preventDefault();
       const placa = (inputPatente.value||'').trim().toUpperCase();
@@ -128,7 +146,6 @@
       toast('Vehículo ingresado');
     });
 
-    // ---- LISTADO en tiempo real (lee de /estacionados) ----
     let cache = [];
     onEstacionados((items)=>{
       cache = Array.isArray(items) ? items : [];
@@ -138,30 +155,22 @@
     function render(){
       const term = (searchInput.value||'').trim().toUpperCase();
       const filtered = term ? cache.filter(v => (v.placa||'').toUpperCase().includes(term)) : cache;
-
       lista.innerHTML = '';
       countEl.textContent = cache.length;
-
       filtered.forEach(v=>{
         const li = document.createElement('li');
-
         const emoji = v.tipo==='camioneta' ? '🚐' : (v.tipo==='moto' ? '🏍️' : '🚗');
         const hora  = v.entradaISO ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : (v.horaTexto||'');
-
         const left = document.createElement('div');
         const plate = document.createElement('span'); plate.style.fontWeight='700'; plate.textContent = `${emoji} ${v.placa}`;
         const time  = document.createElement('span'); time.style.display='block'; time.style.fontSize='.9em'; time.style.color='#666'; time.textContent = hora;
         left.appendChild(plate); left.appendChild(time);
         if (v.notas){ const n=document.createElement('span'); n.style.display='block'; n.style.fontSize='.8em'; n.style.color='#e74c3c'; n.textContent=v.notas; left.appendChild(n); }
-
         const del = document.createElement('button'); del.textContent='SALIDA';
         del.addEventListener('click', ()=>openExitModal(v));
-
         li.appendChild(left); li.appendChild(del);
         lista.appendChild(li);
       });
-
-      // datalist sugerencias
       const dl = document.getElementById('placaSuggestions');
       dl.innerHTML = '';
       [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
@@ -173,20 +182,16 @@
     clearBtn.addEventListener('click', ()=>{ searchInput.value=''; render(); });
     inputPatente.addEventListener('keypress', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); } });
 
-    // ---- Modal de salida (ahora elimina) ----
     let currentItem = null; let cobro = 0;
-
     function openExitModal(item){
       currentItem = item;
       const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
       const salida  = new Date();
       const min = Math.max(1, Math.ceil((salida-entrada)/60000));
-
       const tarifaHora = item.tipo==='moto'?3 : item.tipo==='camioneta'?7 : 5;
       const horas = Math.floor(min/60); const resto = min%60;
       let total = tarifaHora; if(horas>0) total += (horas-1)*tarifaHora; total += Math.floor(resto/30)*(tarifaHora/2);
       cobro = Math.round(total);
-
       exitTitle.textContent = item.placa.toUpperCase();
       exitInfo.innerHTML = `Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})} hs.<br>Tiempo: ${min} minutos`;
       exitAmount.textContent = `$${cobro}`;
