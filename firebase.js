@@ -5,7 +5,7 @@ import {
   getDatabase, ref, push, set, onValue, remove
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-// ---------- TU CONFIG ----------
+// ---------- CONFIGURACIÓN DEL PROYECTO ----------
 const firebaseConfig = {
   apiKey: "AIzaSyBMdSRkAjfWGOP0cnTUI2UEsbXBI3vTNIo",
   authDomain: "parking-c5830.firebaseapp.com",
@@ -18,55 +18,52 @@ const firebaseConfig = {
 };
 console.log("CFG =>", firebaseConfig);
 
-// ---------- Init ----------
+// ---------- Inicialización ----------
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
-
 console.log("Firebase OK ✅ [DEFAULT]");
 
-// ---------- Auth anónima ----------
-let currentUid = null;
-const authReady = new Promise((resolve, reject) => {
-  onAuthStateChanged(auth, (user) => {
-    if (user) { currentUid = user.uid; resolve(user); }
-    else { signInAnonymously(auth).catch(reject); }
-  }, reject);
-});
-const path = (p) => `users/${currentUid}/${p}`;
+// ---------- Autenticación anónima ----------
+await signInAnonymously(auth).catch((e) => console.error("Error en login anónimo:", e));
+
+// ---------- Nodo compartido ----------
+const BASE = "estacionados"; // Todos los dispositivos ven el mismo nodo
 
 // ---------- API para la app ----------
 export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) {
-  await authReady;
-  const key = push(ref(db, path("estacionados"))).key;
-  await set(ref(db, path(`estacionados/${key}`)), {
-    id: key, placa, tipo, notas, entradaISO, horaTexto
+  const key = push(ref(db, BASE)).key;
+  await set(ref(db, `${BASE}/${key}`), {
+    id: key,
+    placa,
+    tipo,
+    notas,
+    entradaISO,
+    horaTexto
   });
+  console.log("🚗 Entrada guardada:", placa);
   return key;
 }
 
 export function onEstacionados(callback) {
-  authReady.then(() => {
-    onValue(ref(db, path("estacionados")), (snap) => {
-      const val = snap.val() || {};
-      const arr = Object.values(val)
-        .sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
-      callback(arr);
-    });
+  onValue(ref(db, BASE), (snap) => {
+    const val = snap.val() || {};
+    const arr = Object.values(val)
+      .sort((a,b) => (b.entradaISO || "").localeCompare(a.entradaISO || ""));
+    callback(arr);
   });
 }
 
 export async function removeEstacionado(id) {
-  await authReady;
-  await remove(ref(db, path(`estacionados/${id}`)));
+  await remove(ref(db, `${BASE}/${id}`));
+  console.log("🧹 Vehículo eliminado:", id);
 }
 
-// ---------- Helper de prueba en consola ----------
-window.firebase = { app, auth, db };   // para tests manuales
+// ---------- Prueba desde consola ----------
+window.firebase = { app, auth, db };
 window.firebasePing = async () => {
-  await authReady;
-  const key = push(ref(db, path("ping"))).key;
-  await set(ref(db, path(`ping/${key}`)), { ts: new Date().toISOString() });
+  const key = push(ref(db, "ping")).key;
+  await set(ref(db, `ping/${key}`), { ts: new Date().toISOString() });
   console.log("DB OK ✅ ping:", key);
 };
 
