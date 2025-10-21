@@ -39,7 +39,7 @@
       font-weight: 700;
       color: #ffffff;
     }
-    .count {
+    .summary {
       padding: 15px;
       background: #f8f9fa;
       border-bottom: 1px solid #ecf0f1;
@@ -47,27 +47,49 @@
       font-size: 1.2rem;
       color: #2c3e50;
     }
-    .list {
+    .table-wrap {
       max-height: 70vh;
       overflow: auto;
       padding: 10px;
     }
-    .row {
-      display: flex;
-      justify-content: space-between;
-      padding: 12px 10px;
-      border-bottom: 1px dashed #ecf0f1;
-      font-size: 1rem;
+    table {
+      width: 100%;
+      border-collapse: collapse;
     }
-    .row .time {
-      color: #7f8c8d;
-      font-weight: 500;
+    thead th {
+      background: #3498db;
+      color: #ffffff;
+      font-size: 0.9rem;
+      padding: 10px;
+      text-align: left;
     }
-    .row .type {
-      font-weight: 700;
+    tbody td {
+      padding: 12px;
+      border-bottom: 1px solid #ecf0f1;
+      font-size: 0.95rem;
       color: #2c3e50;
     }
-    /* Responsive (opcional, ya está optimizado para móvil) */
+    tbody tr:hover {
+      background: #f9f9f9;
+    }
+    footer {
+      padding: 15px;
+      text-align: center;
+    }
+    .btn {
+      padding: 10px 16px;
+      background: #e74c3c;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background: #c0392b;
+    }
+    /* Responsive (ya optimizado para móvil) */
     @media (min-width: 768px) {
       .container {
         max-width: 600px;
@@ -80,20 +102,38 @@
     <header>
       <div class="title">Monitor en Tiempo Real</div>
     </header>
-    <div class="count">Ingresos del día: <span id="count">0</span></div>
-    <div class="list" id="realtimeList">
-      <!-- Ingresos se cargarán dinámicamente -->
+    <div class="summary">
+      Salidas del día: <span id="count">0</span><br>
+      Recaudación: <span id="revenue">$0</span>
     </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Hora Entrada</th>
+            <th>Hora Salida</th>
+            <th>Duración</th>
+            <th>Cobrado</th>
+          </tr>
+        </thead>
+        <tbody id="realtimeTable"></tbody>
+      </table>
+    </div>
+    <footer>
+      <button class="btn" id="exportCsv">Exportar CSV</button>
+    </footer>
   </div>
   <!-- Firebase -->
   <script type="module">
     import { db } from './firebase.js';
     import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-    // Estado
-    let ingresos = [];
+    // ====== Configuración de tarifas ======
+    const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
+    // ====== Estado ======
+    let salidas = [];
 
-    // Utilidades
+    // ====== Utilidades ======
     const $ = (id) => document.getElementById(id);
     function parseISO(s) {
       try { return new Date(s); } catch { return null; }
@@ -101,40 +141,106 @@
     function getHour(time) {
       return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
+    function formatHM(totalMin) {
+      const h = Math.floor(totalMin / 60), m = totalMin % 60;
+      if (h && m) return `${h} h ${m} min`;
+      if (h) return `${h} h`;
+      return `${m} min`;
+    }
+    function computeCharge(item) {
+      if (typeof item.totalCobrado === 'number') return item.totalCobrado;
+      const tarifa = TARIFAS[item.tipo] ?? TARIFAS.auto;
+      const entrada = parseISO(item.entradaISO);
+      const salida = parseISO(item.salidaISO);
+      if (!entrada || !salida) return 0;
+      const min = Math.max(1, Math.ceil((salida - entrada) / 60000));
+      let total = tarifa;
+      const resto = Math.max(0, min - 60);
+      total += Math.ceil(resto / 30) * (tarifa / 2);
+      return Math.round(total);
+    }
 
-    // Cargar datos desde Firebase
+    // ====== Cargar datos desde Firebase ======
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Inicio del día
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999); // Fin del día
 
-    onValue(ref(db, 'estacionados'), (snap) => {
+    onValue(ref(db, 'salidas'), (snap) => {
       const val = snap.val() || {};
-      ingresos = Object.values(val)
+      salidas = Object.values(val)
         .filter(x => {
-          const entrada = parseISO(x.entradaISO);
-          return entrada && entrada >= today && entrada <= todayEnd;
+          const salida = parseISO(x.salidaISO);
+          return salida && salida >= today && salida <= todayEnd;
         })
-        .sort((a, b) => parseISO(b.entradaISO) - parseISO(a.entradaISO)); // Orden descendente por entrada
+        .sort((a, b) => parseISO(b.salidaISO) - parseISO(a.salidaISO)); // Orden descendente por salida
       render();
     });
 
-    // Renderizar lista
+    // ====== Renderizar tabla ======
     function render() {
-      const list = $('realtimeList');
+      const table = $('realtimeTable');
       const countEl = $('count');
-      list.innerHTML = '';
-      countEl.textContent = ingresos.length;
-      ingresos.forEach(x => {
-        const row = document.createElement('div');
-        row.className = 'row';
+      const revenueEl = $('revenue');
+      table.innerHTML = '';
+      countEl.textContent = salidas.length;
+      const totalRevenue = salidas.reduce((sum, x) => sum + computeCharge(x), 0);
+      revenueEl.textContent = `$${totalRevenue.toLocaleString('es-AR')}`;
+      salidas.forEach(x => {
+        const tr = document.createElement('tr');
         const entrada = parseISO(x.entradaISO);
-        const time = entrada ? getHour(entrada) : '--:--';
-        const type = x.tipo || 'auto';
-        row.innerHTML = `<span class="time">${time}</span><span class="type">${type.toUpperCase()}</span>`;
-        list.appendChild(row);
+        const salida = parseISO(x.salidaISO);
+        const durMin = salida && entrada ? Math.max(1, Math.ceil((salida - entrada) / 60000)) : 0;
+        const durTxt = formatHM(durMin);
+        const cobro = computeCharge(x);
+        tr.innerHTML = `
+          <td>${entrada ? getHour(entrada) : '--:--'}</td>
+          <td>${salida ? getHour(salida) : '--:--'}</td>
+          <td>${durTxt}</td>
+          <td>$${cobro.toLocaleString('es-AR')}</td>
+        `;
+        table.appendChild(tr);
       });
     }
+
+    // ====== Exportar CSV ======
+    function toCsv(rows) {
+      return rows.map(r => r.map(v => {
+        const s = String(v ?? '');
+        if (s.includes(';') || s.includes('"') || s.includes('\n')) {
+          return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+      }).join(';')).join('\n');
+    }
+    $('exportCsv').addEventListener('click', () => {
+      const rows = [
+        ['Hora Entrada', 'Hora Salida', 'Duración', 'Cobrado']
+      ];
+      salidas.forEach(x => {
+        const entrada = parseISO(x.entradaISO);
+        const salida = parseISO(x.salidaISO);
+        const durTxt = computeDurText(x);
+        const cobro = computeCharge(x);
+        rows.push([
+          entrada ? getHour(entrada) : '',
+          salida ? getHour(salida) : '',
+          durTxt,
+          cobro
+        ]);
+      });
+      const csv = toCsv(rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const todayTxt = dateKey(new Date());
+      a.download = `salidas_${todayTxt}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
   </script>
 </body>
 </html>
