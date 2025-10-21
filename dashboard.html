@@ -382,7 +382,7 @@
       const y = new Date();
       y.setDate(y.getDate() - 1); // Día anterior
       y.setHours(0, 0, 0, 0); // Inicio del día anterior
-      const end = new Date(y);
+      const end = new Date(y); // Usar una copia de y para no modificar el original
       end.setHours(23, 59, 59, 999); // Fin del día anterior
       setRangeAndApply(y, end);
     });
