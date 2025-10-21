@@ -13,7 +13,7 @@ import {
   equalTo,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-// ---------- CONFIG ----------
+// ---------- TU CONFIG ----------
 const firebaseConfig = {
   apiKey: "AIzaSyBMdSRkAjfWGOP0cnTUI2UEsbXBI3vTNIo",
   authDomain: "parking-c5830.firebaseapp.com",
@@ -22,7 +22,7 @@ const firebaseConfig = {
   storageBucket: "parking-c5830.appspot.com",
   messagingSenderId: "242733687477",
   appId: "1:242733687477:web:46cc3ac60656e14d114fc",
-  measurementId: "G-W9WTM7PT7Z",
+  measurementId: "G-W9WTM7PT7Z"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -46,8 +46,8 @@ const KEYS = {
 
 // ---------- Estado online/offline ----------
 const isOnline = () => navigator.onLine === true;
-window.addEventListener("online",  () => { console.log("🔌 Volvimos online"); processQueues(); });
-window.addEventListener("offline", () => { console.log("📴 Sin conexión"); });
+window.addEventListener("online",  () => { console.log("🔌 Online");  processQueues(); });
+window.addEventListener("offline", () => { console.log("📴 Offline"); });
 
 // ---------- Mapa localId -> firebaseId ----------
 function idMapGet(localId) {
@@ -68,15 +68,12 @@ function idMapDeleteLocal(localId) {
 // ---------- API: Alta de entrada ----------
 export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) {
   if (isOnline()) {
-    // Online: grabo directo
     const key = push(ref(db, "estacionados")).key;
     await set(ref(db, `estacionados/${key}`), {
-      id: key,
-      placa, tipo, notas, entradaISO, horaTexto
+      id: key, placa, tipo, notas, entradaISO, horaTexto
     });
     return key;
   } else {
-    // Offline: guardo en cola con id local
     const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
     const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
     pend.push({ id: localId, placa, tipo, notas, entradaISO, horaTexto });
@@ -87,40 +84,54 @@ export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) 
 }
 
 // ---------- Suscripción al listado ----------
-let onValueUnsub = null;
 export function onEstacionados(callback) {
-  // Me suscribo a Firebase
   const r = ref(db, "estacionados");
-  onValueUnsub = onValue(r, (snap) => {
+  onValue(r, (snap) => {
     const val = snap.val() || {};
     let arr = Object.values(val).sort((a,b) =>
       (b.entradaISO || "").localeCompare(a.entradaISO || "")
     );
 
-    // Si estoy offline, agrego lo pendiente (para que el operador lo vea igual)
+    // Si estoy offline, muestro también las pendientes
     const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
     if (!isOnline() && pend.length) {
-      // Evito duplicar por misma placa y mismo timestamp
-      const existingKeys = new Set(arr.map(x => `${x.placa}|${x.entradaISO}`));
-      const toMerge = pend.filter(x => !existingKeys.has(`${x.placa}|${x.entradaISO}`));
+      const existing = new Set(arr.map(x => `${x.placa}|${x.entradaISO}`));
+      const toMerge = pend.filter(x => !existing.has(`${x.placa}|${x.entradaISO}`));
       arr = [...toMerge, ...arr];
     }
-
     callback(arr);
   });
 }
 
-// ---------- Baja de entrada (SALIDA) ----------
-export async function removeEstacionado(id) {
+// ---------- Guardar SALIDA en /salidas ----------
+async function writeSalida(meta, estacionadoIdOrNull) {
+  // meta debe traer: placa, tipo, notas, entradaISO, salidaISO, totalMin, totalCobrado, duracionTexto
+  const key = push(ref(db, "salidas")).key;
+  await set(ref(db, `salidas/${key}`), {
+    id: key,
+    ...meta,
+    estacionadoId: estacionadoIdOrNull || null,
+    ts: new Date().toISOString()
+  });
+}
+
+// ---------- Baja de entrada (SALIDA) + HISTORIAL ----------
+export async function removeEstacionado(id, meta = null) {
+  // meta puede venir nula si el caller viejo no lo envía; pero tu index ahora sí la manda.
+  const salidaPayload = meta || {};
+
   // Caso 1: id real de Firebase
   if (!id.startsWith("local-")) {
     if (isOnline()) {
+      // 1) guardo historial
+      await writeSalida(salidaPayload, id);
+      // 2) borro de estacionados
       await remove(ref(db, `estacionados/${id}`));
       return;
     } else {
-      // No hay conexión: encolo la salida por id Firebase
+      // Encolo la salida con id Firebase y meta
       const outs = LS.get(KEYS.PENDING_SALIDAS, []);
-      outs.push({ id });
+      outs.push({ id, meta: salidaPayload });
       LS.set(KEYS.PENDING_SALIDAS, outs);
       console.log("📦 Salida en cola (firebaseId):", id);
       return;
@@ -133,9 +144,7 @@ export async function removeEstacionado(id) {
   if (isOnline()) {
     // Intento resolver el firebaseId
     let firebaseId = idMapGet(localId);
-
     if (!firebaseId) {
-      // Busco por idOriginal == localId
       const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(localId));
       const snap = await get(q);
       const data = snap.val() || {};
@@ -147,82 +156,66 @@ export async function removeEstacionado(id) {
     }
 
     if (firebaseId) {
+      await writeSalida(salidaPayload, firebaseId);
       await remove(ref(db, `estacionados/${firebaseId}`));
       idMapDeleteLocal(localId);
     } else {
-      // Aún no subió su replica → encolo salida por localId
+      // Aún no subió su réplica → encolo salida por localId + meta
       const outs = LS.get(KEYS.PENDING_SALIDAS, []);
-      outs.push({ localId });
+      outs.push({ localId, meta: salidaPayload });
       LS.set(KEYS.PENDING_SALIDAS, outs);
       console.log("📦 Salida en cola (localId):", localId);
     }
   } else {
-    // Sin conexión: encolo salida por localId y saco de los pendientes de entrada si existiera
+    // Sin conexión: encolo salida por localId y saco de pendientes de entrada para que desaparezca de la UI
     const outs = LS.get(KEYS.PENDING_SALIDAS, []);
-    outs.push({ localId });
+    outs.push({ localId, meta: salidaPayload });
     LS.set(KEYS.PENDING_SALIDAS, outs);
 
-    // Limpieza visual: si aún estaba en pendientes de entrada, lo saco (desaparece de la UI)
     let pend = LS.get(KEYS.PENDING_ENTRADAS, []);
-    const before = pend.length;
     pend = pend.filter(x => x.id !== localId);
-    if (pend.length !== before) {
-      LS.set(KEYS.PENDING_ENTRADAS, pend);
-    }
+    LS.set(KEYS.PENDING_ENTRADAS, pend);
+
     console.log("📦 Salida en cola OFF (localId):", localId);
   }
 }
 
-// ---------- Procesamiento de colas al volver online ----------
+// ---------- Procesar colas ----------
 async function processQueues() {
   if (!isOnline()) return;
 
   // 1) Subo ENTRADAS pendientes
   let pend = LS.get(KEYS.PENDING_ENTRADAS, []);
-  if (pend.length) {
-    console.log(`⬆️ Subiendo ${pend.length} entradas pendientes...`);
-  }
   for (const item of pend) {
     try {
       const key = push(ref(db, "estacionados")).key;
       await set(ref(db, `estacionados/${key}`), {
         id: key,
-        idOriginal: item.id, // <- vínculo para poder borrarlo luego
+        idOriginal: item.id,
         placa: item.placa,
         tipo: item.tipo,
         notas: item.notas,
         entradaISO: item.entradaISO,
         horaTexto: item.horaTexto
       });
-      // guardo mapping local → firebase
       idMapSet(item.id, key);
-      // lo saco de la cola
-      let now = LS.get(KEYS.PENDING_ENTRADAS, []);
-      now = now.filter(x => x.id !== item.id);
-      LS.set(KEYS.PENDING_ENTRADAS, now);
+      pend = LS.get(KEYS.PENDING_ENTRADAS, []).filter(x => x.id !== item.id);
+      LS.set(KEYS.PENDING_ENTRADAS, pend);
     } catch (e) {
       console.warn("Error subiendo entrada pendiente", item, e);
     }
   }
 
-  // 🔄 Espera breve para que onValue vea los nuevos nodos
-  await new Promise(r => setTimeout(r, 350));
-
   // 2) Proceso SALIDAS pendientes
   let outs = LS.get(KEYS.PENDING_SALIDAS, []);
-  if (outs.length) {
-    console.log(`⬇️ Procesando ${outs.length} salidas pendientes...`);
-  }
   const remaining = [];
   for (const o of outs) {
     try {
       let firebaseId = o.id || null;
 
       if (!firebaseId && o.localId) {
-        // Intento mapping directo
         firebaseId = idMapGet(o.localId);
         if (!firebaseId) {
-          // Busco por idOriginal
           const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(o.localId));
           const snap = await get(q);
           const data = snap.val() || {};
@@ -235,26 +228,29 @@ async function processQueues() {
       }
 
       if (firebaseId) {
+        // 1) historial
+        await writeSalida(o.meta || {}, firebaseId);
+        // 2) baja de estacionados
         await remove(ref(db, `estacionados/${firebaseId}`));
         if (o.localId) idMapDeleteLocal(o.localId);
       } else {
-        // No lo pude resolver aún; lo dejo para la próxima vuelta
+        // No lo pude resolver aún; lo reintento más tarde
         remaining.push(o);
       }
     } catch (e) {
       console.warn("Error procesando salida pendiente", o, e);
-      remaining.push(o); // reintento en próxima conexión
+      remaining.push(o);
     }
   }
   LS.set(KEYS.PENDING_SALIDAS, remaining);
 }
 
-// ---------- Arranque: si ya estamos online, proceso colas ----------
+// Arranque: si ya estamos online, proceso colas
 if (isOnline()) {
   processQueues();
 }
 
-// ---------- Helpers para debug ----------
+// ---------- Debug helpers ----------
 window.firebase = { app, db };
 window.firebaseDebug = {
   queues() {
