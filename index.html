@@ -1,137 +1,54 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestor de Estacionamiento</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-  <!-- Estilos: mantengo tu look & feel -->
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
-    body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
-    body.dark-mode{background:#3a3f44;color:#fff}
-    .theme-config{position:fixed;top:10px;right:10px;display:flex;align-items:center;gap:8px;z-index:1000;border-radius:8px}
-    .config-link{padding:6px 10px;background:#fff;border:1px solid #ccc;border-radius:8px;text-decoration:none;color:#333;font-size:12px;cursor:pointer}
-    .config-link.dark-mode{background:#2b2e33;border-color:#555;color:#fff}
-    .config-link:hover{background:#f0f0f0}
-    .config-link.dark-mode:hover{background:#3a3f44}
-    .theme-toggle{width:36px;height:36px;font-size:20px;background:transparent;border:1px solid #ccc;border-radius:50%;cursor:pointer;color:#333;display:flex;align-items:center;justify-content:center}
-    .theme-toggle.dark-mode{border-color:#555;color:#fff}
-    .theme-toggle:hover{background:#ddd}
-    .theme-toggle.dark-mode:hover{background:#444}
-    .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
-    .container.dark-mode{background:#2b2e33;border-color:#555;box-shadow:0 2px 5px rgba(0,0,0,.3)}
-    .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
-    .form-section.dark-mode{background:#3a3f44}
-    .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
-    .list-section.dark-mode{background:#2b2e33}
-    h2{color:#333;margin:0 0 10px 0;font-size:1.3em;text-transform:uppercase}
-    .dark-mode h2{color:#fff}
-    .ingreso{display:flex;flex-direction:column;gap:10px}
-    .ingreso input#placa{font-size:1.1em;padding:10px}
-    .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
-    input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
-    .dark-mode input{border-color:#555;background:#3a3f44;color:#fff}
-    input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
-    .dark-mode input:focus{border-color:#7f8c8d;box-shadow:0 0 5px rgba(127,140,141,.5)}
-    button{width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.2em}
-    button:hover{background:#357abd}
-    .vehicle-btn{flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:20px;text-align:center;background:transparent;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 4px}
-    .dark-mode .vehicle-btn{border-color:#555;box-shadow:0 1px 2px rgba(0,0,0,.2)}
-    .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 4px 8px rgba(0,0,0,.2)}
-    .dark-mode .vehicle-btn.active{border-color:#7f8c8d;box-shadow:0 4px 8px rgba(0,0,0,.3)}
-    .vehicle-btn:hover{border-color:#95a5a6;box-shadow:0 2px 4px rgba(0,0,0,.15)}
-    .dark-mode .vehicle-btn:hover{border-color:#95a5a6;box-shadow:0 2px 4px rgba(0,0,0,.25)}
-    .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
-    .delete-btn:hover{background:#c0392b}
-    .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
-    .clear-filter-btn:hover{background:#d35400}
-    .clear-filter-btn.active{display:block}
-    ul{list-style:none}
-    li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
-    .dark-mode li{background:#3a3f44;border-color:#555;border-left-color:#7f8c8d}
-    .in-parking{border-left-color:#4a90e2}
-    .dark-mode .in-parking{border-left-color:#7f8c8d}
-    .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
-    .dark-mode .plate{color:#fff}
-    .time{font-size:.8em;color:#666;margin-top:4px;display:block}
-    .dark-mode .time{color:#fff}
-    .time::after{content:" hs."}
-    .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
-    .dark-mode .note{color:#fff}
-    .table-header{display:none}
-    #searchInput{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
-    .dark-mode #searchInput{border-color:#555;background:#3a3f44;color:#fff}
-    #searchInput:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
-    .dark-mode #searchInput:focus{border-color:#7f8c8d;box-shadow:0 0 5px rgba(127,140,141,.5)}
-    .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
-    .modal-content{background:#fefefe;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
-    .dark-mode .modal-content{background:#2b2e33;color:#fff}
-    .modal-content h3{font-size:1.8em;margin-bottom:10px;text-transform:uppercase}
-    .modal-content p{margin-bottom:10px;font-size:1em}
-    .modal-content .amount{font-size:1.8em;font-weight:700;margin-bottom:10px}
-    .modal-content input{width:100%;padding:8px;margin-bottom:10px;font-size:1em}
-    .modal-content .change{font-weight:700;margin-bottom:10px;font-size:1em}
-    .modal-content button{padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.1em}
-    .modal-content button:hover{background:#357abd}
-    .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
-    .dark-mode .close-modal{color:#fff}
-    .close-modal:hover{color:#e74c3c}
-    .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
-    .toast.show{visibility:visible;animation:fadeInOut 2s}
-    @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
-    @media (max-width:768px){
-      .container{flex-direction:column;max-width:100%;margin:0;border-radius:0}
-      .form-section,.list-section{width:100%;padding:10px}
-      .ingreso input#placa{font-size:1em}
-      button{font-size:1em;padding:10px}
-      .vehicle-btn{font-size:18px;padding:6px}
-      .plate{font-size:1.2em}.time{font-size:.7em}.note{font-size:.6em}
-      .modal-content{width:85%;max-width:350px;padding:15px}
-      .modal-content h3{font-size:1.5em}.modal-content .amount{font-size:1.5em}
-      .theme-config{top:5px;right:5px}.config-link{font-size:10px;padding:4px 8px}
-      .theme-toggle{width:30px;height:30px;font-size:16px}
-    }
-  </style>
+  <!-- Asegurate de subir este style.css y usar cache-busting -->
+  <link rel="stylesheet" href="style.css?v=4">
 
-  <!-- Tu módulo Firebase (YA debe estar apuntando a /estacionados) -->
+  <!-- Tu módulo de Firebase (ya apuntando a /estacionados) -->
   <script type="module" src="./firebase.js"></script>
 </head>
 <body>
-  <div class="theme-config">
-    <a href="config.html" class="config-link" target="_blank">Configuración</a>
-    <button class="theme-toggle" id="themeToggle">🌞</button>
-  </div>
-
   <div class="container">
+    <h1>Gestor de Estacionamiento</h1>
+
+    <!-- Sección de ingreso (fija) -->
     <div class="form-section">
       <section class="ingreso">
         <h2>INGRESO DE VEHÍCULO</h2>
+
         <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off">
         <input type="text" id="entryTime" value="" readonly>
         <datalist id="placaSuggestions"></datalist>
+
         <input type="text" id="notas" placeholder="Notas">
-        <div class="vehicle-buttons">
-          <button id="autoBtn" class="vehicle-btn active" data-tipo="auto">🚗</button>
-          <button id="camionetaBtn" class="vehicle-btn" data-tipo="camioneta">🚐</button>
-          <button id="motoBtn" class="vehicle-btn" data-tipo="moto">🏍️</button>
+
+        <div style="display:flex; gap:10px; margin:10px 0;">
+          <button id="autoBtn"     class="vehicle-btn active" data-tipo="auto">🚗</button>
+          <button id="camionetaBtn" class="vehicle-btn"       data-tipo="camioneta">🚐</button>
+          <button id="motoBtn"      class="vehicle-btn"       data-tipo="moto">🏍️</button>
         </div>
+
         <button id="btn-entrada">ENTRADA</button>
       </section>
     </div>
 
+    <!-- Sección de lista (la ÚNICA que scrollea) -->
     <div class="list-section">
       <h2>ESTACIONADOS: <span id="count">0</span></h2>
+
       <input type="text" id="searchInput" placeholder="Buscar placa...">
       <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
-      <div class="table-header"></div>
+
       <ul id="listaEstacionados"></ul>
     </div>
   </div>
 
   <!-- Modal de salida -->
-  <div id="exitModal" class="modal">
+  <div id="exitModal" class="modal" style="display:none;">
     <div class="modal-content">
       <span class="close-modal" id="closeModal">&times;</span>
       <h3 id="exitTitle"></h3>
@@ -144,28 +61,12 @@
   </div>
 
   <!-- Toast -->
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast" style="display:none;"></div>
 
-  <!-- Lógica de página: Firebase + UI -->
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
-    // ---- Tema ----
-    const themeToggle = document.getElementById('themeToggle');
-    const container = document.querySelector('.container');
-    const configLinks = document.querySelectorAll('.config-link');
-    if (localStorage.getItem('theme') === 'dark') enableDark(true);
-    themeToggle.addEventListener('click', () => enableDark(!document.body.classList.contains('dark-mode')));
-    function enableDark(on){
-      document.body.classList.toggle('dark-mode', on);
-      themeToggle.classList.toggle('dark-mode', on);
-      container.classList.toggle('dark-mode', on);
-      configLinks.forEach(a=>a.classList.toggle('dark-mode', on));
-      themeToggle.textContent = on ? '🌙' : '🌞';
-      localStorage.setItem('theme', on ? 'dark' : 'light');
-    }
-
-    // ---- Refs UI ----
+    // ---- UI refs ----
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
@@ -175,13 +76,13 @@
     const searchInput  = document.getElementById('searchInput');
     const clearBtn     = document.getElementById('clearFilterBtn');
 
-    const exitModal = document.getElementById('exitModal');
-    const closeModal = document.getElementById('closeModal');
-    const exitTitle = document.getElementById('exitTitle');
-    const exitInfo = document.getElementById('exitInfo');
-    const exitAmount = document.getElementById('exitAmount');
-    const paymentInput = document.getElementById('paymentInput');
-    const changeOutput = document.getElementById('changeOutput');
+    const exitModal     = document.getElementById('exitModal');
+    const closeModal    = document.getElementById('closeModal');
+    const exitTitle     = document.getElementById('exitTitle');
+    const exitInfo      = document.getElementById('exitInfo');
+    const exitAmount    = document.getElementById('exitAmount');
+    const paymentInput  = document.getElementById('paymentInput');
+    const changeOutput  = document.getElementById('changeOutput');
     const confirmButton = document.getElementById('confirmButton');
 
     // ---- Tipo seleccionado ----
@@ -195,11 +96,19 @@
     });
 
     // ---- Hora viva ----
-    function updateEntryTime(){ inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}); }
+    function updateEntryTime(){
+      inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+    }
     updateEntryTime(); setInterval(updateEntryTime, 60_000);
 
     // ---- Toast ----
-    function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'; setTimeout(()=>t.className='toast', 1800); }
+    function toast(msg){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      t.className = 'toast show';
+      setTimeout(()=>{ t.className='toast'; t.style.display='none'; }, 1800);
+    }
 
     // ---- ENTRADA (escribe en /estacionados) ----
     btnEntrada.addEventListener('click', async (e)=>{
@@ -214,13 +123,17 @@
         entradaISO: d.toISOString(),
         horaTexto: d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
-      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
+      inputPatente.value=''; inputNotas.value='';
+      inputPatente.focus();
       toast('Vehículo ingresado');
     });
 
     // ---- LISTADO en tiempo real (lee de /estacionados) ----
     let cache = [];
-    onEstacionados((items)=>{ cache = items||[]; render(); });
+    onEstacionados((items)=>{
+      cache = Array.isArray(items) ? items : [];
+      render();
+    });
 
     function render(){
       const term = (searchInput.value||'').trim().toUpperCase();
@@ -231,25 +144,24 @@
 
       filtered.forEach(v=>{
         const li = document.createElement('li');
-        li.className = 'in-parking';
 
         const emoji = v.tipo==='camioneta' ? '🚐' : (v.tipo==='moto' ? '🏍️' : '🚗');
         const hora  = v.entradaISO ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : (v.horaTexto||'');
 
         const left = document.createElement('div');
-        const plate = document.createElement('span'); plate.className='plate'; plate.textContent = `${emoji} ${v.placa}`;
-        const time  = document.createElement('span'); time.className='time'; time.textContent = hora;
+        const plate = document.createElement('span'); plate.style.fontWeight='700'; plate.textContent = `${emoji} ${v.placa}`;
+        const time  = document.createElement('span'); time.style.display='block'; time.style.fontSize='.9em'; time.style.color='#666'; time.textContent = hora;
         left.appendChild(plate); left.appendChild(time);
-        if (v.notas){ const n=document.createElement('span'); n.className='note'; n.textContent=v.notas; left.appendChild(n); }
+        if (v.notas){ const n=document.createElement('span'); n.style.display='block'; n.style.fontSize='.8em'; n.style.color='#e74c3c'; n.textContent=v.notas; left.appendChild(n); }
 
-        const del = document.createElement('button'); del.className='delete-btn'; del.textContent='SALIDA';
+        const del = document.createElement('button'); del.textContent='SALIDA';
         del.addEventListener('click', ()=>openExitModal(v));
 
         li.appendChild(left); li.appendChild(del);
         lista.appendChild(li);
       });
 
-      // datalist de sugerencias
+      // datalist sugerencias
       const dl = document.getElementById('placaSuggestions');
       dl.innerHTML = '';
       [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
@@ -261,15 +173,15 @@
     clearBtn.addEventListener('click', ()=>{ searchInput.value=''; render(); });
     inputPatente.addEventListener('keypress', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); } });
 
-    // ---- Modal SALIDA (por ahora: elimina en Firebase) ----
+    // ---- Modal de salida (ahora elimina) ----
     let currentItem = null; let cobro = 0;
+
     function openExitModal(item){
       currentItem = item;
       const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
       const salida  = new Date();
       const min = Math.max(1, Math.ceil((salida-entrada)/60000));
 
-      // cálculo simple (podemos tomar desde config.html más adelante)
       const tarifaHora = item.tipo==='moto'?3 : item.tipo==='camioneta'?7 : 5;
       const horas = Math.floor(min/60); const resto = min%60;
       let total = tarifaHora; if(horas>0) total += (horas-1)*tarifaHora; total += Math.floor(resto/30)*(tarifaHora/2);
@@ -280,7 +192,6 @@
       exitAmount.textContent = `$${cobro}`;
       paymentInput.value=''; changeOutput.textContent='Vuelto: $0';
       exitModal.style.display='flex';
-      if (document.body.classList.contains('dark-mode')) exitModal.querySelector('.modal-content').classList.add('dark-mode');
     }
 
     paymentInput.addEventListener('input', ()=>{
