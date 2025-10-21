@@ -1,7 +1,16 @@
 // ---------- Firebase SDK (CDN v11) ----------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
-  getDatabase, ref, push, set, onValue, remove, get, query, orderByChild, equalTo
+  getDatabase,
+  ref,
+  push,
+  set,
+  onValue,
+  remove,
+  get,
+  query,
+  orderByChild,
+  equalTo,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
 // ---------- CONFIG ----------
@@ -13,210 +22,249 @@ const firebaseConfig = {
   storageBucket: "parking-c5830.appspot.com",
   messagingSenderId: "242733687477",
   appId: "1:242733687477:web:46cc3ac60656e14d114fc",
-  measurementId: "G-W9WTM7PT7Z"
+  measurementId: "G-W9WTM7PT7Z",
 };
 
-// ---------- Init ----------
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
-console.log("Firebase OK ✅ [GLOBAL + OFFLINE QUEUE]");
+console.log("Firebase OK ✅");
 
-// ---------- Utils ----------
-const isOnline = () => navigator.onLine;
-const LS_ENTRADAS = "parking_pendingEntradas";
-const LS_SALIDAS  = "parking_pendingSalidas";
+// ---------- LocalStorage helpers ----------
+const LS = {
+  get(key, def) {
+    try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; }
+  },
+  set(key, val) {
+    localStorage.setItem(key, JSON.stringify(val));
+  }
+};
+const KEYS = {
+  PENDING_ENTRADAS: "parking_pending_entradas",
+  PENDING_SALIDAS:  "parking_pending_salidas",
+  IDMAP:            "parking_localId_to_firebaseId"
+};
 
-const loadJSON = (k, d=[]) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+// ---------- Estado online/offline ----------
+const isOnline = () => navigator.onLine === true;
+window.addEventListener("online",  () => { console.log("🔌 Volvimos online"); processQueues(); });
+window.addEventListener("offline", () => { console.log("📴 Sin conexión"); });
 
-const getPendEntradas = () => loadJSON(LS_ENTRADAS);
-const setPendEntradas = (arr) => { saveJSON(LS_ENTRADAS, arr); notifySubscribers(); };
-
-const getPendSalidas  = () => loadJSON(LS_SALIDAS);
-const setPendSalidas  = (arr) => { saveJSON(LS_SALIDAS, arr); notifySubscribers(); };
-
-// ---------- Estado de suscriptores y remoto ----------
-let subs = [];
-let lastRemoteList = [];
-let listenerAttached = false;
-
-function notifySubscribers() {
-  const locals = getPendEntradas();
-  const rem = lastRemoteList;
-
-  const remIds = new Set(rem.map(x => x.id));
-  const remOriginals = new Set(rem.map(x => x.idOriginal).filter(Boolean));
-
-  // Mostrar locales sólo si no están representados por un remoto con idOriginal
-  const localsFiltered = locals.filter(v => !remIds.has(v.id) && !remOriginals.has(v.id));
-
-  const merged = [...rem, ...localsFiltered]
-    .sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
-
-  subs.forEach(cb => cb(merged));
+// ---------- Mapa localId -> firebaseId ----------
+function idMapGet(localId) {
+  const map = LS.get(KEYS.IDMAP, {});
+  return map[localId] || null;
+}
+function idMapSet(localId, firebaseId) {
+  const map = LS.get(KEYS.IDMAP, {});
+  map[localId] = firebaseId;
+  LS.set(KEYS.IDMAP, map);
+}
+function idMapDeleteLocal(localId) {
+  const map = LS.get(KEYS.IDMAP, {});
+  delete map[localId];
+  LS.set(KEYS.IDMAP, map);
 }
 
-function attachRemoteListenerOnce() {
-  if (listenerAttached) return;
-  listenerAttached = true;
-  onValue(ref(db, "estacionados"), (snap) => {
+// ---------- API: Alta de entrada ----------
+export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) {
+  if (isOnline()) {
+    // Online: grabo directo
+    const key = push(ref(db, "estacionados")).key;
+    await set(ref(db, `estacionados/${key}`), {
+      id: key,
+      placa, tipo, notas, entradaISO, horaTexto
+    });
+    return key;
+  } else {
+    // Offline: guardo en cola con id local
+    const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+    pend.push({ id: localId, placa, tipo, notas, entradaISO, horaTexto });
+    LS.set(KEYS.PENDING_ENTRADAS, pend);
+    console.log("📦 Entrada en cola:", localId);
+    return localId;
+  }
+}
+
+// ---------- Suscripción al listado ----------
+let onValueUnsub = null;
+export function onEstacionados(callback) {
+  // Me suscribo a Firebase
+  const r = ref(db, "estacionados");
+  onValueUnsub = onValue(r, (snap) => {
     const val = snap.val() || {};
-    lastRemoteList = Object.values(val)
-      .filter(Boolean)
-      .sort((a,b) => (b.entradaISO||"").localeCompare(a.entradaISO||""));
-    notifySubscribers();
-  }, () => {
-    notifySubscribers();
+    let arr = Object.values(val).sort((a,b) =>
+      (b.entradaISO || "").localeCompare(a.entradaISO || "")
+    );
+
+    // Si estoy offline, agrego lo pendiente (para que el operador lo vea igual)
+    const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+    if (!isOnline() && pend.length) {
+      // Evito duplicar por misma placa y mismo timestamp
+      const existingKeys = new Set(arr.map(x => `${x.placa}|${x.entradaISO}`));
+      const toMerge = pend.filter(x => !existingKeys.has(`${x.placa}|${x.entradaISO}`));
+      arr = [...toMerge, ...arr];
+    }
+
+    callback(arr);
   });
 }
 
-// ---------- Procesamiento de colas al reconectar ----------
+// ---------- Baja de entrada (SALIDA) ----------
+export async function removeEstacionado(id) {
+  // Caso 1: id real de Firebase
+  if (!id.startsWith("local-")) {
+    if (isOnline()) {
+      await remove(ref(db, `estacionados/${id}`));
+      return;
+    } else {
+      // No hay conexión: encolo la salida por id Firebase
+      const outs = LS.get(KEYS.PENDING_SALIDAS, []);
+      outs.push({ id });
+      LS.set(KEYS.PENDING_SALIDAS, outs);
+      console.log("📦 Salida en cola (firebaseId):", id);
+      return;
+    }
+  }
+
+  // Caso 2: id local (offline)
+  const localId = id;
+
+  if (isOnline()) {
+    // Intento resolver el firebaseId
+    let firebaseId = idMapGet(localId);
+
+    if (!firebaseId) {
+      // Busco por idOriginal == localId
+      const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(localId));
+      const snap = await get(q);
+      const data = snap.val() || {};
+      const keys = Object.keys(data);
+      if (keys.length > 0) {
+        firebaseId = keys[0];
+        idMapSet(localId, firebaseId);
+      }
+    }
+
+    if (firebaseId) {
+      await remove(ref(db, `estacionados/${firebaseId}`));
+      idMapDeleteLocal(localId);
+    } else {
+      // Aún no subió su replica → encolo salida por localId
+      const outs = LS.get(KEYS.PENDING_SALIDAS, []);
+      outs.push({ localId });
+      LS.set(KEYS.PENDING_SALIDAS, outs);
+      console.log("📦 Salida en cola (localId):", localId);
+    }
+  } else {
+    // Sin conexión: encolo salida por localId y saco de los pendientes de entrada si existiera
+    const outs = LS.get(KEYS.PENDING_SALIDAS, []);
+    outs.push({ localId });
+    LS.set(KEYS.PENDING_SALIDAS, outs);
+
+    // Limpieza visual: si aún estaba en pendientes de entrada, lo saco (desaparece de la UI)
+    let pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+    const before = pend.length;
+    pend = pend.filter(x => x.id !== localId);
+    if (pend.length !== before) {
+      LS.set(KEYS.PENDING_ENTRADAS, pend);
+    }
+    console.log("📦 Salida en cola OFF (localId):", localId);
+  }
+}
+
+// ---------- Procesamiento de colas al volver online ----------
 async function processQueues() {
   if (!isOnline()) return;
 
-  // 1) Subir ENTRADAS pendientes
-  let entradas = getPendEntradas();
-  if (entradas.length) {
-    const remaining = [];
-    let salidas = getPendSalidas();
+  // 1) Subo ENTRADAS pendientes
+  let pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+  if (pend.length) {
+    console.log(`⬆️ Subiendo ${pend.length} entradas pendientes...`);
+  }
+  for (const item of pend) {
+    try {
+      const key = push(ref(db, "estacionados")).key;
+      await set(ref(db, `estacionados/${key}`), {
+        id: key,
+        idOriginal: item.id, // <- vínculo para poder borrarlo luego
+        placa: item.placa,
+        tipo: item.tipo,
+        notas: item.notas,
+        entradaISO: item.entradaISO,
+        horaTexto: item.horaTexto
+      });
+      // guardo mapping local → firebase
+      idMapSet(item.id, key);
+      // lo saco de la cola
+      let now = LS.get(KEYS.PENDING_ENTRADAS, []);
+      now = now.filter(x => x.id !== item.id);
+      LS.set(KEYS.PENDING_ENTRADAS, now);
+    } catch (e) {
+      console.warn("Error subiendo entrada pendiente", item, e);
+    }
+  }
 
-    for (const item of entradas) {
-      try {
-        const key = push(ref(db, "estacionados")).key;
-        await set(ref(db, `estacionados/${key}`), { id: key, ...item, idOriginal: item.id });
+  // 🔄 Espera breve para que onValue vea los nuevos nodos
+  await new Promise(r => setTimeout(r, 350));
 
-        // Si había salida pendiente para ese id local, borro el recién subido
-        const idxSalida = salidas.findIndex(s => s.id === item.id);
-        if (idxSalida !== -1) {
-          try { await remove(ref(db, `estacionados/${key}`)); } catch {}
-          salidas.splice(idxSalida, 1);
+  // 2) Proceso SALIDAS pendientes
+  let outs = LS.get(KEYS.PENDING_SALIDAS, []);
+  if (outs.length) {
+    console.log(`⬇️ Procesando ${outs.length} salidas pendientes...`);
+  }
+  const remaining = [];
+  for (const o of outs) {
+    try {
+      let firebaseId = o.id || null;
+
+      if (!firebaseId && o.localId) {
+        // Intento mapping directo
+        firebaseId = idMapGet(o.localId);
+        if (!firebaseId) {
+          // Busco por idOriginal
+          const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(o.localId));
+          const snap = await get(q);
+          const data = snap.val() || {};
+          const keys = Object.keys(data);
+          if (keys.length > 0) {
+            firebaseId = keys[0];
+            idMapSet(o.localId, firebaseId);
+          }
         }
-      } catch (e) {
-        // dejar pendiente si falló
-        remaining.push(item);
       }
+
+      if (firebaseId) {
+        await remove(ref(db, `estacionados/${firebaseId}`));
+        if (o.localId) idMapDeleteLocal(o.localId);
+      } else {
+        // No lo pude resolver aún; lo dejo para la próxima vuelta
+        remaining.push(o);
+      }
+    } catch (e) {
+      console.warn("Error procesando salida pendiente", o, e);
+      remaining.push(o); // reintento en próxima conexión
     }
-    setPendEntradas(remaining);
-    setPendSalidas(salidas);
   }
-
-  // 2) Ejecutar SALIDAS pendientes (ids reales)
-  let salidas = getPendSalidas();
-  if (salidas.length) {
-    const remaining = [];
-    const entradasPend = getPendEntradas();
-
-    for (const s of salidas) {
-      if (String(s.id).startsWith("local-")) {
-        // si la entrada local aún está pendiente, todavía no hay qué borrar remoto
-        if (entradasPend.some(e => e.id === s.id)) remaining.push(s);
-        continue;
-      }
-      try {
-        await remove(ref(db, `estacionados/${s.id}`));
-      } catch (e) {
-        remaining.push(s);
-      }
-    }
-    setPendSalidas(remaining);
-  }
+  LS.set(KEYS.PENDING_SALIDAS, remaining);
 }
 
-window.addEventListener("online",  () => processQueues());
-window.addEventListener("offline", () => notifySubscribers());
-
-// ---------- API PÚBLICA ----------
-export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) {
-  if (isOnline()) {
-    const key = push(ref(db, "estacionados")).key;
-    await set(ref(db, `estacionados/${key}`), { id: key, placa, tipo, notas, entradaISO, horaTexto });
-    return key;
-  }
-  // Offline: id temporal local-...
-  const tempId = `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-  const nuevo  = { id: tempId, placa, tipo, notas, entradaISO, horaTexto };
-  const entradas = getPendEntradas();
-  entradas.push(nuevo);
-  setPendEntradas(entradas);
-  return tempId;
+// ---------- Arranque: si ya estamos online, proceso colas ----------
+if (isOnline()) {
+  processQueues();
 }
 
-export function onEstacionados(callback) {
-  subs.push(callback);
-  attachRemoteListenerOnce();
-  notifySubscribers();
-  return () => { subs = subs.filter(fn => fn !== callback); };
-}
-
-// ---- helper: buscar por idOriginal en remoto (consulta directa) ----
-async function findRemoteByOriginalId(idOriginal) {
-  try {
-    const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(idOriginal));
-    const snap = await get(q);
-    if (snap.exists()) {
-      const obj = snap.val();
-      // devolver el primer match {id, ...}
-      for (const [key, val] of Object.entries(obj)) {
-        return { id: key, ...val };
-      }
-    }
-  } catch {}
-  return null;
-}
-
-export async function removeEstacionado(id) {
-  // Caso: id local
-  if (String(id).startsWith("local-")) {
-
-    if (isOnline()) {
-      // 1) intento con cache
-      let match = lastRemoteList.find(r => r.idOriginal === id);
-
-      // 2) si no está en cache, consulto al server
-      if (!match) {
-        match = await findRemoteByOriginalId(id);
-      }
-
-      // 3) si existe remoto -> lo borro
-      if (match && match.id) {
-        try { await remove(ref(db, `estacionados/${match.id}`)); } catch {}
-      }
-    }
-
-    // Limpio la cola local para que desaparezca de UI
-    const entradas = getPendEntradas().filter(e => e.id !== id);
-    setPendEntradas(entradas);
-
-    // Limpio una posible salida pendiente duplicada
-    const salidas = getPendSalidas().filter(s => s.id !== id);
-    setPendSalidas(salidas);
-
-    return;
-  }
-
-  // Caso: id real
-  if (isOnline()) {
-    await remove(ref(db, `estacionados/${id}`));
-    return;
-  }
-
-  // Sin red: encolo salida para id real
-  const salidas = getPendSalidas();
-  if (!salidas.some(s => s.id === id)) {
-    salidas.push({ id });
-    setPendSalidas(salidas);
-  }
-  notifySubscribers();
-}
-
-// ---------- Arranque ----------
-processQueues();
-
-// ---------- Debug ----------
+// ---------- Helpers para debug ----------
 window.firebase = { app, db };
-window.parkingDebug = {
-  getPendEntradas,
-  getPendSalidas,
-  syncNow: processQueues
+window.firebaseDebug = {
+  queues() {
+    return {
+      entradas: LS.get(KEYS.PENDING_ENTRADAS, []),
+      salidas:  LS.get(KEYS.PENDING_SALIDAS, []),
+      map:      LS.get(KEYS.IDMAP, {})
+    };
+  },
+  async forceProcess() { await processQueues(); console.log("✔ Reproceso manual de colas"); }
 };
+
 export { app, db };
