@@ -38,7 +38,7 @@
     .clear-filter-btn:hover{background:#d35400}
     .clear-filter-btn.active{display:block}
 
-    ul{list-style:none;padding-bottom:60px;} /* 👈 espacio final para no tapar el último vehículo */
+    ul{list-style:none;padding-bottom:60px;} /* espacio final para no tapar el último vehículo */
     li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
 
     .in-parking{border-left-color:#4a90e2}
@@ -146,6 +146,10 @@
 
     // ---- Tipo seleccionado ----
     let tipoSeleccionado = 'auto';
+    const autoBtn = document.getElementById('autoBtn');
+    const camionetaBtn = document.getElementById('camionetaBtn');
+    const motoBtn = document.getElementById('motoBtn');
+
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
@@ -169,6 +173,15 @@
       setTimeout(()=>t.className='toast',1800);
     }
 
+    // ---- Mostrar/ocultar botón "Borrar filtro" ----
+    function toggleClearBtn(){
+      const hasText=(searchInput.value||'').trim().length>0;
+      clearBtn.classList.toggle('active',hasText);
+    }
+    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
+    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
+    toggleClearBtn();
+
     // ---- ENTRADA ----
     btnEntrada.addEventListener('click', async (e)=>{
       e.preventDefault();
@@ -182,12 +195,12 @@
         entradaISO: d.toISOString(),
         horaTexto: d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
-      inputPatente.value='';
-      inputNotas.value='';
+      // Reset UI + vuelve a AUTO preseleccionado
+      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
       tipoSeleccionado='auto';
-      document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
-      document.querySelector('[data-tipo="auto"]').classList.add('active');
-      inputPatente.focus();
+      autoBtn.classList.add('active');
+      camionetaBtn.classList.remove('active');
+      motoBtn.classList.remove('active');
       toast('Vehículo ingresado');
     });
 
@@ -223,13 +236,14 @@
       });
     }
 
-    function toggleClearBtn(){
-      const hasText=(searchInput.value||'').length>0;
-      clearBtn.classList.toggle('active',hasText);
+    // ---- Util: formato "Xh Ym" ----
+    function formatHM(totalMin){
+      const h=Math.floor(totalMin/60);
+      const m=totalMin%60;
+      if(h<=0) return `${m} min`;
+      if(m<=0) return `${h} h`;
+      return `${h} h ${m} min`;
     }
-    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
-    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
-    toggleClearBtn();
 
     // ---- Modal SALIDA ----
     let currentItem=null; let cobro=0;
@@ -239,17 +253,27 @@
       currentItem=item;
       const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
       const salida=new Date();
+
+      // Total de minutos
       const min=Math.max(1,Math.ceil((salida-entrada)/60000));
+
+      // 1ra hora completa
       const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
-      const horas=Math.floor(min/60);
-      const resto=min%60;
       let total=tarifaHora;
-      if(horas>0) total+=(horas-1)*tarifaHora;
-      total+=Math.floor(resto/30)*(tarifaHora/2);
+
+      // Minutos después de la primera hora, cobrados en bloques de 30 min redondeando hacia ARRIBA
+      const restantes=Math.max(0,min-60);
+      const bloques30=Math.ceil(restantes/30);
+      total += bloques30 * (tarifaHora/2);
+
       cobro=Math.round(total);
-      const horasTxt=`${horas}h ${resto}m`;
+
+      const txtEntrada=entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+      const txtSalida =salida .toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+      const txtDur    =formatHM(min);
+
       exitTitle.textContent=item.placa.toUpperCase();
-      exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false})}<br>Tiempo: ${horasTxt}`;
+      exitInfo.innerHTML=`Entrada: ${txtEntrada}<br>Salida: ${txtSalida}<br>Tiempo: ${txtDur}`;
       exitAmount.textContent=`$${cobro}`;
       paymentInput.value=''; changeOutput.textContent='Vuelto: $0';
       exitModal.style.display='flex';
