@@ -1,175 +1,389 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestor de Estacionamiento (Móvil)</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-<script type="module" src="./firebase.js"></script>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
-  html,body{height:100%;overflow:hidden;background:#f5f5f5;color:#333}
-  body{display:flex;flex-direction:column;height:100dvh}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Gestor de Estacionamiento (Móvil)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
 
-  /* Panel superior fijo */
-  .top-panel{
-    flex-shrink:0;
-    background:#f9f9f9;
-    padding:15px;
-    border-bottom:2px solid #ddd;
-  }
-  h2{font-size:1.2em;font-weight:700;margin-bottom:10px}
+  <style>
+    /* ===== Base (misma estética) ===== */
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
+    body{background:#f5f5f5;color:#333;min-height:100vh;position:relative}
 
-  input{
-    width:100%;padding:10px;margin-bottom:8px;
-    border:1px solid #ccc;border-radius:8px;font-size:16px;
-  }
-  input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.4)}
+    /* Pantalla completa sin scroll global */
+    html, body { height: 100%; overflow: hidden; }
+    body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; }
 
-  .vehicle-buttons{display:flex;justify-content:space-between;margin:10px 0}
-  .vehicle-btn{
-    flex:1;padding:8px;margin:0 4px;border:1px solid #ccc;border-radius:8px;
-    font-size:22px;cursor:pointer;background:#fff;
-  }
-  .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 3px 6px rgba(0,0,0,.15)}
-  button#btn-entrada{
-    width:100%;padding:12px;background:#4a90e2;color:#fff;
-    border:none;border-radius:8px;font-size:1.1em;font-weight:700;
-  }
-  button#btn-entrada:hover{background:#357abd}
-
-  /* Panel inferior scrollable */
-  .bottom-panel{
-    flex:1;overflow-y:auto;padding:10px;
-    background:#fff;
-    padding-bottom:clamp(24px,env(safe-area-inset-bottom)+24px,64px);
-  }
-  .bottom-panel::after{content:"";display:block;height:28px}
-
-  .header-row{
-    display:flex;justify-content:space-between;align-items:center;
-    margin-bottom:10px;
-  }
-  .header-row h3{font-size:1.1em;font-weight:700;text-transform:uppercase}
-  .count{font-size:1em;font-weight:700;color:#4a90e2}
-
-  #searchInput{
-    width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;
-    font-size:14px;margin-bottom:8px;
-  }
-  #searchInput:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
-
-  #clearFilterBtn{
-    display:none;width:100%;padding:8px;background:#e67e22;color:#fff;
-    border:none;border-radius:8px;font-size:13px;margin-bottom:8px;
-  }
-  #clearFilterBtn.active{display:block}
-  #clearFilterBtn:hover{background:#d35400}
-
-  ul{list-style:none}
-  li{
-    display:flex;justify-content:space-between;align-items:center;
-    background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;
-    border-radius:8px;padding:8px;margin-bottom:8px;
-  }
-  .plate{font-size:1.3em;font-weight:700}
-  .time{font-size:.8em;color:#666;margin-top:4px;display:block}
-  .delete-btn{
-    background:#e74c3c;color:#fff;border:none;border-radius:8px;
-    padding:6px 12px;font-size:14px;font-weight:700;
-  }
-  .delete-btn:hover{background:#c0392b}
-
-  /* Toast */
-  .toast{
-    visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;
-    border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;
-    transform:translateX(-50%);font-size:14px;
-  }
-  .toast.show{visibility:visible;animation:fadeInOut 2s}
-  @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
-</style>
-</head>
-<body>
-  <div class="top-panel">
-    <h2>INGRESO DE VEHÍCULO</h2>
-    <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off">
-    <input type="text" id="entryTime" readonly>
-    <datalist id="placaSuggestions"></datalist>
-    <input type="text" id="notas" placeholder="Notas">
-    <div class="vehicle-buttons">
-      <button class="vehicle-btn active" data-tipo="auto">🚗</button>
-      <button class="vehicle-btn" data-tipo="camioneta">🚐</button>
-      <button class="vehicle-btn" data-tipo="moto">🏍️</button>
-    </div>
-    <button id="btn-entrada">ENTRADA</button>
-  </div>
-
-  <div class="bottom-panel">
-    <div class="header-row">
-      <h3>ESTACIONADOS</h3>
-      <span class="count" id="count">0</span>
-    </div>
-    <input type="text" id="searchInput" placeholder="BUSCAR PATENTE">
-    <button id="clearFilterBtn">BORRAR FILTRO</button>
-    <ul id="listaEstacionados"></ul>
-  </div>
-
-  <div id="toast" class="toast"></div>
-
-  <script type="module">
-    import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
-
-    const inputPatente=document.getElementById('placa');
-    const inputNotas=document.getElementById('notas');
-    const inputHora=document.getElementById('entryTime');
-    const btnEntrada=document.getElementById('btn-entrada');
-    const lista=document.getElementById('listaEstacionados');
-    const countEl=document.getElementById('count');
-    const searchInput=document.getElementById('searchInput');
-    const clearBtn=document.getElementById('clearFilterBtn');
-    let tipoSeleccionado='auto';
-    document.querySelectorAll('[data-tipo]').forEach(b=>{
-      b.addEventListener('click',()=>{
-        document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
-        b.classList.add('active');tipoSeleccionado=b.dataset.tipo;
-      });
-    });
-
-    function updateEntryTime(){inputHora.value=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});}
-    updateEntryTime();setInterval(updateEntryTime,60000);
-    function toast(m){const t=document.getElementById('toast');t.textContent=m;t.className='toast show';setTimeout(()=>t.className='toast',1800);}
-
-    btnEntrada.addEventListener('click',async e=>{
-      e.preventDefault();
-      const placa=(inputPatente.value||'').trim().toUpperCase();
-      if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
-      const d=new Date();
-      await addEntrada({placa,tipo:tipoSeleccionado,notas:inputNotas.value||'',entradaISO:d.toISOString(),horaTexto:d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})});
-      inputPatente.value='';inputNotas.value='';inputPatente.focus();toast('Vehículo ingresado');
-    });
-
-    let cache=[];
-    onEstacionados(items=>{cache=items||[];render();});
-    function render(){
-      const term=(searchInput.value||'').trim().toUpperCase();
-      const filtered=term?cache.filter(v=>(v.placa||'').toUpperCase().includes(term)):cache;
-      lista.innerHTML='';countEl.textContent=cache.length;
-      clearBtn.classList.toggle('active',term.length>0);
-      filtered.forEach(v=>{
-        const li=document.createElement('li');
-        const left=document.createElement('div');
-        const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
-        left.innerHTML=`<span class="plate">${emoji} ${v.placa}</span><span class="time">${new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} hs.</span>`;
-        const del=document.createElement('button');del.className='delete-btn';del.textContent='SALIDA';
-        del.onclick=()=>removeEstacionado(v.id);
-        li.append(left,del);
-        lista.append(li);
-      });
+    .container{
+      display:flex; flex-direction:column;
+      height:100vh; width:100%;
+      background:#fff; border:1px solid #ddd;
+      border-left:none; border-right:none; border-radius:0;
+      box-shadow:0 2px 5px rgba(0,0,0,.1);
     }
 
-    searchInput.addEventListener('input',render);
-    clearBtn.addEventListener('click',()=>{searchInput.value='';render();});
+    /* Panel superior fijo */
+    .form-section{
+      flex:0 0 auto;
+      padding:12px;
+      background:#f9f9f9;
+      /* ⬇️ Divisor más notorio */
+      border-bottom:3px solid #e0e0e0;
+    }
+
+    /* Panel inferior scrolleable */
+    .list-section{
+      flex:1 1 auto;
+      min-height:0;               /* necesario para que el scroll funcione bien */
+      padding:12px;
+      background:#fff;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+
+    h2{color:#333;margin:0;font-size:1.2em;text-transform:uppercase}
+
+    .ingreso{display:flex;flex-direction:column;gap:10px}
+    .ingreso input#placa{font-size:1.1em;padding:10px}
+    .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:6px}
+
+    input{
+      width:100%;padding:10px;margin-bottom:8px;
+      border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:16px
+    }
+    input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
+
+    button{
+      width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.1em
+    }
+    button:hover{background:#357abd}
+
+    .vehicle-btn{
+      flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:20px;text-align:center;background:transparent;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 4px
+    }
+    .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 4px 8px rgba(0,0,0,.2)}
+    .vehicle-btn:hover{border-color:#95a5a6;box-shadow:0 2px 4px rgba(0,0,0,.15)}
+
+    .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
+    .delete-btn:hover{background:#c0392b}
+
+    ul{list-style:none}
+    li{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:10px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;
+    }
+    .in-parking{border-left-color:#4a90e2}
+
+    .plate{font-size:1.3em;font-weight:700;color:#333;display:flex;align-items:center;gap:6px}
+    .time{font-size:.85em;color:#666;margin-top:4px;display:block}
+    .time::after{content:" hs."}
+    .note{font-size:.75em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
+
+    /* Encabezado de la lista con contador a la derecha */
+    .list-header{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:10px;
+    }
+    .count-badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:36px;padding:4px 10px;border-radius:999px;
+      background:#4a90e2;color:#fff;font-weight:700;font-size:.95em;
+    }
+
+    /* Buscador + botón borrar al lado */
+    .search-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    #searchInput{flex:1}
+    .clear-filter-btn{
+      padding:10px 12px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.9em;
+      display:none; /* aparece solo cuando hay texto */
+      width:auto;
+      white-space:nowrap;
+    }
+    .clear-filter-btn.active{display:inline-block}
+    .clear-filter-btn:hover{background:#d35400}
+
+    /* Modal */
+    .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
+    .modal-content{background:#fefefe;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
+    .modal-content h3{font-size:1.6em;margin-bottom:10px;text-transform:uppercase}
+    .modal-content p{margin-bottom:10px;font-size:1em}
+    .modal-content .amount{font-size:1.6em;font-weight:700;margin-bottom:10px}
+    .modal-content input{width:100%;padding:8px;margin-bottom:10px;font-size:1em}
+    .modal-content .change{font-weight:700;margin-bottom:10px;font-size:1em}
+    .modal-content button{padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.05em}
+    .modal-content button:hover{background:#357abd}
+    .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
+    .close-modal:hover{color:#e74c3c}
+
+    /* Toast */
+    .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
+    .toast.show{visibility:visible;animation:fadeInOut 2s}
+    @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
+  </style>
+
+  <!-- Firebase (mismo módulo) -->
+  <script type="module" src="./firebase.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Panel fijo (ingreso) -->
+    <div class="form-section">
+      <section class="ingreso">
+        <h2>INGRESO DE VEHÍCULO</h2>
+        <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off" />
+        <input type="text" id="entryTime" value="" readonly />
+        <datalist id="placaSuggestions"></datalist>
+        <input type="text" id="notas" placeholder="Notas" />
+
+        <div class="vehicle-buttons">
+          <button class="vehicle-btn active" data-tipo="auto">🚗</button>
+          <button class="vehicle-btn" data-tipo="camioneta">🚐</button>
+          <button class="vehicle-btn" data-tipo="moto">🏍️</button>
+        </div>
+
+        <button id="btn-entrada">ENTRADA</button>
+      </section>
+    </div>
+
+    <!-- Panel scrolleable (listado) -->
+    <div class="list-section">
+      <div class="list-header">
+        <h2>ESTACIONADOS</h2>
+        <span id="count" class="count-badge">0</span>
+      </div>
+
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="BUSCAR PATENTE" />
+        <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
+      </div>
+
+      <div class="table-header"></div>
+      <ul id="listaEstacionados"></ul>
+    </div>
+  </div>
+
+  <!-- Modal de salida -->
+  <div id="exitModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal" id="closeModal">&times;</span>
+      <h3 id="exitTitle"></h3>
+      <p id="exitInfo"></p>
+      <p class="amount" id="exitAmount"></p>
+      <input type="number" id="paymentInput" placeholder="Monto pagado ($)" />
+      <p class="change" id="changeOutput">Vuelto: $0</p>
+      <button id="confirmButton">Confirmar</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Lógica -->
+  <script type="module">
+    import { addEntrada, onEstacionados, removeEstacionado } from "./firebase.js";
+
+    // Refs UI
+    const inputPatente = document.getElementById("placa");
+    const inputNotas   = document.getElementById("notas");
+    const inputHora    = document.getElementById("entryTime");
+    const btnEntrada   = document.getElementById("btn-entrada");
+    const lista        = document.getElementById("listaEstacionados");
+    const countEl      = document.getElementById("count");
+    const searchInput  = document.getElementById("searchInput");
+    const clearBtn     = document.getElementById("clearFilterBtn");
+
+    const exitModal = document.getElementById("exitModal");
+    const closeModal = document.getElementById("closeModal");
+    const exitTitle = document.getElementById("exitTitle");
+    const exitInfo = document.getElementById("exitInfo");
+    const exitAmount = document.getElementById("exitAmount");
+    const paymentInput = document.getElementById("paymentInput");
+    const changeOutput = document.getElementById("changeOutput");
+    const confirmButton = document.getElementById("confirmButton");
+
+    // Tipo seleccionado
+    let tipoSeleccionado = "auto";
+    document.querySelectorAll("[data-tipo]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("[data-tipo]").forEach((x) => x.classList.remove("active"));
+        btn.classList.add("active");
+        tipoSeleccionado = btn.dataset.tipo;
+      });
+    });
+
+    // Hora viva
+    function updateEntryTime() {
+      inputHora.value = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    }
+    updateEntryTime();
+    setInterval(updateEntryTime, 60_000);
+
+    // Toast
+    function toast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.className = "toast show";
+      setTimeout(() => (t.className = "toast"), 1800);
+    }
+
+    // ENTRADA
+    btnEntrada.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const placa = (inputPatente.value || "").trim().toUpperCase();
+      if (!placa) {
+        toast("Ingresá la patente");
+        inputPatente.focus();
+        return;
+      }
+      const d = new Date();
+      await addEntrada({
+        placa,
+        tipo: tipoSeleccionado,
+        notas: inputNotas.value || "",
+        entradaISO: d.toISOString(),
+        horaTexto: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+      inputPatente.value = "";
+      inputNotas.value = "";
+      inputPatente.focus();
+      toast("Vehículo ingresado");
+    });
+
+    // LISTADO en tiempo real
+    let cache = [];
+    onEstacionados((items) => {
+      cache = items || [];
+      render();
+    });
+
+    function render() {
+      const term = (searchInput.value || "").trim().toUpperCase();
+      const filtered = term ? cache.filter((v) => (v.placa || "").toUpperCase().includes(term)) : cache;
+
+      lista.innerHTML = "";
+      countEl.textContent = cache.length;
+
+      filtered.forEach((v) => {
+        const li = document.createElement("li");
+        li.className = "in-parking";
+
+        const emoji = v.tipo === "camioneta" ? "🚐" : v.tipo === "moto" ? "🏍️" : "🚗";
+        const hora = v.entradaISO
+          ? new Date(v.entradaISO).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : v.horaTexto || "";
+
+        const left = document.createElement("div");
+        const plate = document.createElement("span");
+        plate.className = "plate";
+        plate.textContent = `${emoji} ${v.placa}`;
+
+        const time = document.createElement("span");
+        time.className = "time";
+        time.textContent = hora;
+
+        left.appendChild(plate);
+        left.appendChild(time);
+        if (v.notas) {
+          const n = document.createElement("span");
+          n.className = "note";
+          n.textContent = v.notas;
+          left.appendChild(n);
+        }
+
+        const del = document.createElement("button");
+        del.className = "delete-btn";
+        del.textContent = "SALIDA";
+        del.addEventListener("click", () => openExitModal(v));
+
+        li.appendChild(left);
+        li.appendChild(del);
+        lista.appendChild(li);
+      });
+
+      // datalist
+      const dl = document.getElementById("placaSuggestions");
+      dl.innerHTML = "";
+      [...new Set(cache.map((x) => x.placa))]
+        .slice(0, 5)
+        .forEach((p) => {
+          const opt = document.createElement("option");
+          opt.value = p;
+          dl.appendChild(opt);
+        });
+    }
+
+    // Buscador: mostrar/ocultar botón BORRAR FILTRO en vivo
+    function toggleClearBtn(){
+      const hasText = (searchInput.value || "").length > 0;
+      clearBtn.classList.toggle("active", hasText);
+    }
+    searchInput.addEventListener("input", ()=>{ toggleClearBtn(); render(); });
+    clearBtn.addEventListener("click", ()=>{
+      searchInput.value = "";
+      toggleClearBtn();
+      render();
+    });
+    // estado inicial
+    toggleClearBtn();
+
+    // Modal SALIDA (tarifas fijas)
+    let currentItem = null;
+    let cobro = 0;
+    const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
+
+    function openExitModal(item) {
+      currentItem = item;
+      const entrada = item.entradaISO ? new Date(item.entradaISO) : new Date();
+      const salida = new Date();
+      const min = Math.max(1, Math.ceil((salida - entrada) / 60000));
+
+      const tarifaHora = TARIFAS[item.tipo] ?? TARIFAS.auto;
+      const horas = Math.floor(min / 60);
+      const resto = min % 60;
+
+      let total = tarifaHora; // 1ra hora completa
+      if (horas > 0) total += (horas - 1) * tarifaHora; // horas extra
+      total += Math.floor(resto / 30) * (tarifaHora / 2); // fracciones de 30 min
+
+      cobro = Math.round(total);
+
+      exitTitle.textContent = item.placa.toUpperCase();
+      exitInfo.innerHTML = `Entrada: ${entrada.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} hs.<br>Salida: ${salida.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} hs.<br>Tiempo: ${min} minutos`;
+      exitAmount.textContent = `$${cobro}`;
+      paymentInput.value = "";
+      changeOutput.textContent = "Vuelto: $0";
+      exitModal.style.display = "flex";
+    }
+
+    paymentInput.addEventListener("input", () => {
+      const pago = parseFloat(paymentInput.value) || 0;
+      const vuelto = pago - cobro;
+      changeOutput.textContent = `Vuelto: ${vuelto >= 0 ? "$" + vuelto : "Pago insuficiente"}`;
+    });
+
+    confirmButton.addEventListener("click", async () => {
+      if (!currentItem) return;
+      await removeEstacionado(currentItem.id);
+      exitModal.style.display = "none";
+      toast("Salida confirmada");
+      currentItem = null;
+    });
+    closeModal.addEventListener("click", () => {
+      exitModal.style.display = "none";
+      currentItem = null;
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (exitModal.style.display === "flex") {
+        if (e.key === "Enter") confirmButton.click();
+        if (e.key === "Escape") closeModal.click();
+      }
+    });
   </script>
 </body>
 </html>
