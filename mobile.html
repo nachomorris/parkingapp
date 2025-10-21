@@ -7,13 +7,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
 
   <style>
-    /* ====== Base (misma estética que tu versión) ====== */
+    /* ===== Base (misma estética) ===== */
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
     body{background:#f5f5f5;color:#333;min-height:100vh;position:relative}
 
-    /* ====== Móvil: contenedor de pantalla completa sin scroll global ====== */
+    /* Pantalla completa sin scroll global */
     html, body { height: 100%; overflow: hidden; }
-    body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; } /* notch friendly */
+    body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; }
 
     .container{
       display:flex; flex-direction:column;
@@ -23,25 +23,26 @@
       box-shadow:0 2px 5px rgba(0,0,0,.1);
     }
 
-    /* Panel superior fijo (sin scroll) */
+    /* Panel superior fijo */
     .form-section{
       flex:0 0 auto;
       padding:12px;
       background:#f9f9f9;
-      border-bottom:1px solid #ddd;
+      /* ⬇️ Divisor más notorio */
+      border-bottom:3px solid #e0e0e0;
     }
 
     /* Panel inferior scrolleable */
     .list-section{
       flex:1 1 auto;
-      min-height:0; /* importante para que el scroll funcione */
+      min-height:0;               /* necesario para que el scroll funcione bien */
       padding:12px;
       background:#fff;
       overflow-y:auto;
-      -webkit-overflow-scrolling:touch; /* suaviza el scroll en iOS */
+      -webkit-overflow-scrolling:touch;
     }
 
-    h2{color:#333;margin:0 0 10px 0;font-size:1.2em;text-transform:uppercase}
+    h2{color:#333;margin:0;font-size:1.2em;text-transform:uppercase}
 
     .ingreso{display:flex;flex-direction:column;gap:10px}
     .ingreso input#placa{font-size:1.1em;padding:10px}
@@ -67,16 +68,11 @@
     .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
     .delete-btn:hover{background:#c0392b}
 
-    .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
-    .clear-filter-btn:hover{background:#d35400}
-    .clear-filter-btn.active{display:block}
-
     ul{list-style:none}
     li{
       display:flex;justify-content:space-between;align-items:center;
       padding:10px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;
     }
-
     .in-parking{border-left-color:#4a90e2}
 
     .plate{font-size:1.3em;font-weight:700;color:#333;display:flex;align-items:center;gap:6px}
@@ -84,9 +80,28 @@
     .time::after{content:" hs."}
     .note{font-size:.75em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
 
-    .table-header{display:none}
-    #searchInput{width:100%;padding:10px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:16px}
-    #searchInput:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
+    /* Encabezado de la lista con contador a la derecha */
+    .list-header{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:10px;
+    }
+    .count-badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:36px;padding:4px 10px;border-radius:999px;
+      background:#4a90e2;color:#fff;font-weight:700;font-size:.95em;
+    }
+
+    /* Buscador + botón borrar al lado */
+    .search-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    #searchInput{flex:1}
+    .clear-filter-btn{
+      padding:10px 12px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.9em;
+      display:none; /* aparece solo cuando hay texto */
+      width:auto;
+      white-space:nowrap;
+    }
+    .clear-filter-btn.active{display:inline-block}
+    .clear-filter-btn:hover{background:#d35400}
 
     /* Modal */
     .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
@@ -107,7 +122,7 @@
     @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
   </style>
 
-  <!-- Firebase (mismo módulo que ya usás) -->
+  <!-- Firebase (mismo módulo) -->
   <script type="module" src="./firebase.js"></script>
 </head>
 <body>
@@ -133,9 +148,16 @@
 
     <!-- Panel scrolleable (listado) -->
     <div class="list-section">
-      <h2>ESTACIONADOS: <span id="count">0</span></h2>
-      <input type="text" id="searchInput" placeholder="Buscar placa..." />
-      <button id="clearFilterBtn" class="clear-filter-btn">Borrar filtro</button>
+      <div class="list-header">
+        <h2>ESTACIONADOS</h2>
+        <span id="count" class="count-badge">0</span>
+      </div>
+
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="BUSCAR PATENTE" />
+        <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
+      </div>
+
       <div class="table-header"></div>
       <ul id="listaEstacionados"></ul>
     </div>
@@ -157,7 +179,7 @@
   <!-- Toast -->
   <div id="toast" class="toast"></div>
 
-  <!-- Lógica (idéntica a tu flujo, solo ajustado al layout) -->
+  <!-- Lógica -->
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from "./firebase.js";
 
@@ -295,17 +317,19 @@
         });
     }
 
-    searchInput.addEventListener("input", render);
-    clearBtn.addEventListener("click", () => {
+    // Buscador: mostrar/ocultar botón BORRAR FILTRO en vivo
+    function toggleClearBtn(){
+      const hasText = (searchInput.value || "").length > 0;
+      clearBtn.classList.toggle("active", hasText);
+    }
+    searchInput.addEventListener("input", ()=>{ toggleClearBtn(); render(); });
+    clearBtn.addEventListener("click", ()=>{
       searchInput.value = "";
+      toggleClearBtn();
       render();
     });
-    inputPatente.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        btnEntrada.click();
-      }
-    });
+    // estado inicial
+    toggleClearBtn();
 
     // Modal SALIDA (tarifas fijas)
     let currentItem = null;
