@@ -66,7 +66,10 @@ function idMapDeleteLocal(localId) {
 }
 
 // ---------- API: Alta de entrada ----------
-export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto, entradaEditada = false }) {
+// Compat: acepta `edited` (index) y/o `entradaEditada` (viejo)
+export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto, edited = false, entradaEditada = false }) {
+  const flag = !!(edited || entradaEditada);
+
   if (isOnline()) {
     const key = push(ref(db, "estacionados")).key;
     await set(ref(db, `estacionados/${key}`), {
@@ -76,13 +79,24 @@ export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto, en
       notas,
       entradaISO,
       horaTexto,
-      entradaEditada
+      // guardamos ambos por compatibilidad
+      edited: flag,
+      entradaEditada: flag
     });
     return key;
   } else {
     const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
     const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
-    pend.push({ id: localId, placa, tipo, notas, entradaISO, horaTexto, entradaEditada });
+    pend.push({
+      id: localId,
+      placa,
+      tipo,
+      notas,
+      entradaISO,
+      horaTexto,
+      edited: flag,
+      entradaEditada: flag
+    });
     LS.set(KEYS.PENDING_ENTRADAS, pend);
     console.log("📦 Entrada en cola:", localId);
     return localId;
@@ -94,15 +108,21 @@ export function onEstacionados(callback) {
   const r = ref(db, "estacionados");
   onValue(r, (snap) => {
     const val = snap.val() || {};
-    let arr = Object.values(val).sort((a,b) =>
+    let arr = Object.values(val).map(x => ({
+      ...x,
+      // normalizar bandera para el index
+      edited: x.edited === true || x.entradaEditada === true
+    })).sort((a,b) =>
       (b.entradaISO || "").localeCompare(a.entradaISO || "")
     );
 
-    // Si estoy offline, muestro también las pendientes
+    // Si estoy offline, muestro también las pendientes (y normalizo)
     const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
     if (!isOnline() && pend.length) {
       const existing = new Set(arr.map(x => `${x.placa}|${x.entradaISO}`));
-      const toMerge = pend.filter(x => !existing.has(`${x.placa}|${x.entradaISO}`));
+      const toMerge = pend
+        .filter(x => !existing.has(`${x.placa}|${x.entradaISO}`))
+        .map(x => ({ ...x, edited: x.edited === true || x.entradaEditada === true }));
       arr = [...toMerge, ...arr];
     }
     callback(arr);
@@ -180,10 +200,11 @@ export async function removeEstacionado(id, meta = null) {
 async function processQueues() {
   if (!isOnline()) return;
 
-  // 1) Subo ENTRADAS pendientes
+  // 1) Subo ENTRADAS pendientes (incluye ambas banderas)
   let pend = LS.get(KEYS.PENDING_ENTRADAS, []);
   for (const item of pend) {
     try {
+      const flag = !!(item.edited || item.entradaEditada);
       const key = push(ref(db, "estacionados")).key;
       await set(ref(db, `estacionados/${key}`), {
         id: key,
@@ -193,7 +214,8 @@ async function processQueues() {
         notas: item.notas,
         entradaISO: item.entradaISO,
         horaTexto: item.horaTexto,
-        entradaEditada: item.entradaEditada || false
+        edited: flag,
+        entradaEditada: flag
       });
       idMapSet(item.id, key);
       pend = LS.get(KEYS.PENDING_ENTRADAS, []).filter(x => x.id !== item.id);
