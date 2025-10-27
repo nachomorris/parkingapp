@@ -10,7 +10,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Roboto', sans-serif;
-      background: #ecf0f1; /* Fondo claro y neutro */
+      background: #ecf0f1;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -29,7 +29,7 @@
     }
     header {
       padding: 20px;
-      background: #3498db; /* Azul suave */
+      background: #3498db;
       border-bottom: 2px solid #2980b9;
       display: flex;
       flex-wrap: wrap;
@@ -40,7 +40,7 @@
     header .title {
       font-size: 1.6rem;
       font-weight: 700;
-      color: #ffffff; /* Texto blanco para contraste */
+      color: #ffffff;
     }
     .filters {
       display: flex;
@@ -67,7 +67,7 @@
     }
     .filters button {
       padding: 10px 16px;
-      background: #95a5a6; /* Gris neutro */
+      background: #95a5a6;
       color: #ffffff;
       border: none;
       border-radius: 8px;
@@ -75,9 +75,8 @@
       font-weight: 700;
       transition: background 0.3s;
     }
-    .filters button:hover {
-      background: #7f8c8d; /* Gris más oscuro al pasar el ratón */
-    }
+    .filters button:hover { background: #7f8c8d; }
+
     /* KPI cards */
     .kpis {
       display: grid;
@@ -100,11 +99,8 @@
       text-transform: uppercase;
       letter-spacing: 0.02em;
     }
-    .kpi .val {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #2c3e50;
-    }
+    .kpi .val { font-size: 1.5rem; font-weight: 700; color: #2c3e50; }
+
     /* Grids */
     .grids {
       display: grid;
@@ -112,6 +108,7 @@
       gap: 15px;
       padding: 15px 20px 20px 20px;
     }
+
     /* Tabla principal */
     .card {
       background: #ffffff;
@@ -128,14 +125,8 @@
       letter-spacing: 0.02em;
       color: #ffffff;
     }
-    .table-wrap {
-      max-height: 420px;
-      overflow: auto;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    .table-wrap { max-height: 420px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
     thead th {
       position: sticky;
       top: 0;
@@ -152,52 +143,46 @@
       border-bottom: 1px solid #ecf0f1;
       font-size: 0.95rem;
       color: #2c3e50;
+      vertical-align: middle;
     }
-    tbody tr:hover {
-      background: #f9f9f9;
+    tbody tr:hover { background: #f9f9f9; }
+
+    /* Pill EDITADO */
+    .chip-edited{
+      display:inline-flex; align-items:center; gap:6px;
+      margin-left:8px; padding:2px 8px;
+      font-size:.75rem; font-weight:700;
+      color:#0b63b8; background:#e6f0ff;
+      border:1px solid #b7d3ff; border-radius:999px;
+      vertical-align:middle;
     }
+    .chip-edited .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:#0b63b8;
+      box-shadow:0 0 0 3px rgba(11,99,184,.18);
+    }
+
     /* Resumenes */
-    .list {
-      padding: 10px 15px;
-      max-height: 460px;
-      overflow: auto;
-    }
+    .list { padding: 10px 15px; max-height: 460px; overflow: auto; }
     .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 10px;
-      border-bottom: 1px dashed #ecf0f1;
-      font-size: 0.95rem;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 10px; border-bottom: 1px dashed #ecf0f1; font-size: 0.95rem;
     }
-    .row .left {
-      color: #7f8c8d;
-    }
-    .row .right {
-      font-weight: 700;
-      color: #2c3e50;
-    }
+    .row .left { color: #7f8c8d; }
+    .row .right { font-weight: 700; color: #2c3e50; }
+
     /* Footer actions */
     footer {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      padding: 15px 20px 20px 20px;
-      border-top: 1px solid #ecf0f1;
+      display: flex; gap: 10px; justify-content: flex-end;
+      padding: 15px 20px 20px 20px; border-top: 1px solid #ecf0f1;
     }
     .btn {
-      padding: 10px 16px;
-      background: #e74c3c; /* Rojo para exportar, más visible */
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 700;
+      padding: 10px 16px; background: #e74c3c; color: #ffffff;
+      border: none; border-radius: 8px; cursor: pointer; font-weight: 700;
       transition: background 0.3s;
     }
-    .btn:hover {
-      background: #c0392b; /* Rojo más oscuro al pasar el ratón */
-    }
+    .btn:hover { background: #c0392b; }
+
     /* Responsive */
     @media (max-width: 960px) {
       .kpis { grid-template-columns: 1fr; }
@@ -230,6 +215,7 @@
         <button id="last30">Últimos 30 días</button>
       </div>
     </header>
+
     <section class="kpis">
       <div class="kpi">
         <h4>Entradas (salidas registradas)</h4>
@@ -244,6 +230,7 @@
         <div class="val" id="kpiAvg">$–</div>
       </div>
     </section>
+
     <section class="grids">
       <div class="card">
         <h3>Detalle de salidas</h3>
@@ -263,90 +250,88 @@
           </table>
         </div>
       </div>
+
       <div class="card">
         <h3>Resumen</h3>
         <div class="list" id="summary">
-          <!-- por día y por tipo -->
           <div class="row"><div class="left">Cargando…</div><div class="right"></div></div>
         </div>
       </div>
     </section>
+
     <footer>
       <button class="btn" id="exportCsv">Exportar CSV</button>
     </footer>
   </div>
+
   <!-- Firebase -->
   <script type="module">
     import { db } from './firebase.js';
     import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
-    // ====== Configuración de tarifas (fallback si falta totalCobrado) ======
+
     const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
-    // ====== Estado ======
-    let all = []; // todas las salidas
-    let filtered = []; // filtradas por rango
+
+    let all = [];
+    let filtered = [];
     let from = null, to = null;
-    // ====== Utilidades ======
+
     const $ = (id) => document.getElementById(id);
     const fmtMoney = (n) => '$' + (Math.round(n) || 0).toLocaleString('es-AR');
-    function parseISO(s) {
-      try { return new Date(s); } catch { return null; }
-    }
-    function dateKey(d) { // YYYY-MM-DD
-      return d.toISOString().slice(0, 10);
-    }
-    function formatHM(totalMin) {
-      const h = Math.floor(totalMin / 60), m = totalMin % 60;
-      if (h && m) return `${h} h ${m} min`;
-      if (h) return `${h} h`;
+
+    const isEdited = (x) => x?.edited === true || x?.entradaEditada === true;
+
+    function parseISO(s){ try { return new Date(s); } catch { return null; } }
+    function dateKey(d){ return d.toISOString().slice(0,10); }
+    function formatHM(totalMin){
+      const h = Math.floor(totalMin/60), m = totalMin%60;
+      if(h && m) return `${h} h ${m} min`;
+      if(h) return `${h} h`;
       return `${m} min`;
     }
-    function computeCharge(item) {
-      // Si ya viene calculado, usarlo
+    function computeCharge(item){
       if (typeof item.totalCobrado === 'number') return item.totalCobrado;
-      // Sino, calcular con reglas: 1ra hora completa + bloques 30' arriba de la hora
       const tarifa = TARIFAS[item.tipo] ?? TARIFAS.auto;
       const entrada = parseISO(item.entradaISO);
-      const salida = parseISO(item.salidaISO);
+      const salida  = parseISO(item.salidaISO);
       if (!entrada || !salida) return 0;
-      const min = Math.max(1, Math.ceil((salida - entrada) / 60000));
+      const min = Math.max(1, Math.ceil((salida-entrada)/60000));
       let total = tarifa;
       const resto = Math.max(0, min - 60);
-      total += Math.ceil(resto / 30) * (tarifa / 2);
+      total += Math.ceil(resto/30) * (tarifa/2);
       return Math.round(total);
     }
-    function computeDurText(item) {
+    function computeDurText(item){
       if (item.duracionTexto) return item.duracionTexto;
       const entrada = parseISO(item.entradaISO);
-      const salida = parseISO(item.salidaISO);
+      const salida  = parseISO(item.salidaISO);
       if (!entrada || !salida) return '';
-      const min = Math.max(1, Math.ceil((salida - entrada) / 60000));
+      const min = Math.max(1, Math.ceil((salida-entrada)/60000));
       return formatHM(min);
     }
-    // ====== Rango por defecto (últimos 7 días) ======
-    function setDefaultRange(days = 7) {
-      const end = new Date(); // hoy
+
+    function setDefaultRange(days=7){
+      const end = new Date();
       const start = new Date();
-      start.setDate(end.getDate() - (days - 1));
-      from = start;
-      to = end;
+      start.setDate(end.getDate() - (days-1));
+      from = start; to = end;
       $('fromDate').value = dateKey(start);
-      $('toDate').value = dateKey(end);
+      $('toDate').value   = dateKey(end);
     }
-    function setRangeAndApply(fromDate, toDate) {
+    function setRangeAndApply(fromDate, toDate){
       $('fromDate').value = dateKey(fromDate);
-      $('toDate').value = dateKey(toDate);
+      $('toDate').value   = dateKey(toDate);
       applyFilter();
     }
-    // ====== Cargar datos ======
-    onValue(ref(db, 'salidas'), (snap) => {
+
+    onValue(ref(db, 'salidas'), (snap)=>{
       const val = snap.val() || {};
       all = Object.values(val).map(x => ({
         ...x,
-        // normalizar strings
-        placa: (x.placa || '').toUpperCase(),
-        tipo: (x.tipo || 'auto')
-      })).sort((a, b) => {
-        // ordenar por salida desc (o entrada si no hay salida)
+        placa: (x.placa||'').toUpperCase(),
+        tipo: (x.tipo||'auto'),
+        // normalizo flag por si viene en cualquiera de los dos nombres
+        edited: isEdited(x)
+      })).sort((a,b)=>{
         const aa = parseISO(a.salidaISO) || parseISO(a.entradaISO) || 0;
         const bb = parseISO(b.salidaISO) || parseISO(b.entradaISO) || 0;
         return bb - aa;
@@ -354,103 +339,115 @@
       if (!from || !to) setDefaultRange(7);
       applyFilter();
     });
-    // ====== Filtros ======
-    function applyFilter() {
+
+    function applyFilter(){
       const f = new Date($('fromDate').value + 'T00:00:00');
-      const t = new Date($('toDate').value + 'T23:59:59');
-      from = f;
-      to = t;
-      filtered = all.filter(x => {
+      const t = new Date($('toDate').value   + 'T23:59:59');
+      from = f; to = t;
+
+      filtered = all.filter(x=>{
         const d = parseISO(x.salidaISO) || parseISO(x.entradaISO);
         if (!d) return false;
         return d >= from && d <= to;
       });
       render();
     }
+
     $('applyRange').addEventListener('click', applyFilter);
-    $('last7').addEventListener('click', () => { setDefaultRange(7); applyFilter(); });
-    $('last30').addEventListener('click', () => { setDefaultRange(30); applyFilter(); });
-    // === Nuevos: Hoy y Ayer ===
-    $('todayBtn').addEventListener('click', () => {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0); // Inicio del día
-      const end = new Date(d);
-      end.setHours(23, 59, 59, 999); // Fin del día
-      setRangeAndApply(d, end);
+    $('last7').addEventListener('click', ()=>{ setDefaultRange(7); applyFilter(); });
+    $('last30').addEventListener('click', ()=>{ setDefaultRange(30); applyFilter(); });
+    $('todayBtn').addEventListener('click', ()=>{
+      const d = new Date(); d.setHours(0,0,0,0);
+      const e = new Date(d); e.setHours(23,59,59,999);
+      setRangeAndApply(d, e);
     });
-    $('yesterdayBtn').addEventListener('click', () => {
-      const y = new Date();
-      y.setDate(y.getDate() - 1); // Día anterior
-      y.setHours(0, 0, 0, 0); // Inicio del día anterior
-      const end = new Date(y); // Usar una copia de y para no modificar el original
-      end.setHours(23, 59, 59, 999); // Fin del día anterior
-      setRangeAndApply(y, end);
+    $('yesterdayBtn').addEventListener('click', ()=>{
+      const y = new Date(); y.setDate(y.getDate()-1); y.setHours(0,0,0,0);
+      const e = new Date(y); e.setHours(23,59,59,999);
+      setRangeAndApply(y, e);
     });
-    // ====== Render ======
-    function render() {
+
+    function render(){
       // KPIs
       const totalCount = filtered.length;
-      const totalRevenue = filtered.reduce((s, x) => s + computeCharge(x), 0);
+      const totalRevenue = filtered.reduce((s,x)=> s + computeCharge(x), 0);
       const avg = totalCount ? (totalRevenue / totalCount) : 0;
+
       $('kpiCount').textContent = totalCount.toString();
       $('kpiRevenue').textContent = fmtMoney(totalRevenue);
       $('kpiAvg').textContent = fmtMoney(avg);
+
       // Tabla
       const tb = $('tbody');
       tb.innerHTML = '';
-      filtered.forEach(x => {
-        const tr = document.createElement('tr');
+      filtered.forEach(x=>{
         const entrada = parseISO(x.entradaISO);
-        const salida = parseISO(x.salidaISO);
-        const durTxt = computeDurText(x);
-        const cobro = computeCharge(x);
+        const salida  = parseISO(x.salidaISO);
+        const durTxt  = computeDurText(x);
+        const cobro   = computeCharge(x);
+
+        const entradaTxt = entrada
+          ? entrada.toLocaleString([], { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' })
+          : '';
+
+        const editedPill = x.edited
+          ? `<span class="chip-edited"><span class="dot"></span>EDITADO</span>`
+          : '';
+
+        const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${x.placa || ''}</td>
           <td>${x.tipo || ''}</td>
-          <td>${entrada ? entrada.toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : ''}</td>
-          <td>${salida ? salida.toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : ''}</td>
+          <td>${entradaTxt} ${editedPill}</td>
+          <td>${salida ? salida.toLocaleString([], { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' }) : ''}</td>
           <td>${durTxt}</td>
           <td>${fmtMoney(cobro)}</td>
         `;
         tb.appendChild(tr);
       });
-      // Resumen por día y por tipo
-      const byDay = {}; // { 'YYYY-MM-DD': { count, revenue } }
-      const byType = { auto: { c: 0, $: 0 }, camioneta: { c: 0, $: 0 }, moto: { c: 0, $: 0 } };
-      filtered.forEach(x => {
+
+      // Resúmenes
+      const byDay = {};
+      const byType = { auto:{c:0,$:0}, camioneta:{c:0,$:0}, moto:{c:0,$:0} };
+
+      filtered.forEach(x=>{
         const d = parseISO(x.salidaISO) || parseISO(x.entradaISO);
         if (!d) return;
         const k = dateKey(d);
         const cobro = computeCharge(x);
-        byDay[k] = byDay[k] || { count: 0, revenue: 0 };
+
+        byDay[k] = byDay[k] || { count:0, revenue:0 };
         byDay[k].count += 1;
         byDay[k].revenue += cobro;
-        const bt = byType[x.tipo] || (byType[x.tipo] = { c: 0, $: 0 });
-        bt.c += 1;
-        bt.$ += cobro;
+
+        const bt = byType[x.tipo] || (byType[x.tipo]={c:0,$:0});
+        bt.c += 1; bt.$ += cobro;
       });
+
       const summary = $('summary');
       summary.innerHTML = '';
-      // Bloque por día
-      const days = Object.entries(byDay).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-      if (days.length) {
+
+      const days = Object.entries(byDay).sort((a,b)=> a[0] < b[0] ? 1 : -1);
+      if (days.length){
         const title = document.createElement('div');
         title.className = 'row';
         title.innerHTML = `<div class="left"><strong>Por día</strong></div><div class="right"></div>`;
         summary.appendChild(title);
-        days.forEach(([k, v]) => {
+
+        days.forEach(([k,v])=>{
           const div = document.createElement('div');
           div.className = 'row';
           div.innerHTML = `<div class="left">${k}</div><div class="right">${v.count} · ${fmtMoney(v.revenue)}</div>`;
           summary.appendChild(div);
         });
       }
-      // Bloque por tipo
+
       const title2 = document.createElement('div');
       title2.className = 'row';
       title2.innerHTML = `<div class="left"><strong>Por tipo</strong></div><div class="right"></div>`;
       summary.appendChild(title2);
-      ['auto', 'camioneta', 'moto'].forEach(t => {
+
+      ['auto','camioneta','moto'].forEach(t=>{
         const v = byType[t];
         const div = document.createElement('div');
         div.className = 'row';
@@ -458,51 +455,47 @@
         summary.appendChild(div);
       });
     }
-    // ====== Exportar CSV ======
-    function toCsv(rows) {
+
+    // Exportar CSV (mismo layout, sin columna de “Editado” para no romper flujos)
+    function toCsv(rows){
       return rows.map(r => r.map(v => {
         const s = String(v ?? '');
-        if (s.includes(';') || s.includes('"') || s.includes('\n')) {
-          return `"${s.replace(/"/g, '""')}"`;
+        if (s.includes(';') || s.includes('"') || s.includes('\n')){
+          return `"${s.replace(/"/g,'""')}"`;
         }
         return s;
       }).join(';')).join('\n');
     }
-    $('exportCsv').addEventListener('click', () => {
-      const rows = [
-        ['Patente', 'Tipo', 'Entrada', 'Salida', 'Duración', 'Cobrado']
-      ];
-      filtered.forEach(x => {
+    $('exportCsv').addEventListener('click', ()=>{
+      const rows = [['Patente','Tipo','Entrada','Salida','Duración','Cobrado']];
+      filtered.forEach(x=>{
         const entrada = parseISO(x.entradaISO);
-        const salida = parseISO(x.salidaISO);
-        const durTxt = computeDurText(x);
-        const cobro = computeCharge(x);
+        const salida  = parseISO(x.salidaISO);
+        const durTxt  = computeDurText(x);
+        const cobro   = computeCharge(x);
+
+        const entradaTxt = entrada ? entrada.toLocaleString() : '';
         rows.push([
           x.placa || '',
           x.tipo || '',
-          entrada ? entrada.toLocaleString() : '',
+          entradaTxt + (x.edited ? ' (EDITADO)' : ''),
           salida ? salida.toLocaleString() : '',
           durTxt,
           cobro
         ]);
       });
       const csv = toCsv(rows);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const fromTxt = $('fromDate').value;
-      const toTxt = $('toDate').value;
+      const fromTxt = $('fromDate').value; const toTxt = $('toDate').value;
       a.download = `salidas_${fromTxt}_a_${toTxt}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
     });
-    // Inicializa rango por defecto cuando carga el DOM
-    document.addEventListener('DOMContentLoaded', () => {
-      setDefaultRange(7);
-    });
+
+    document.addEventListener('DOMContentLoaded', ()=>{ setDefaultRange(7); });
   </script>
 </body>
 </html>
