@@ -66,17 +66,23 @@ function idMapDeleteLocal(localId) {
 }
 
 // ---------- API: Alta de entrada ----------
-export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto }) {
+export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto, entradaEditada = false }) {
   if (isOnline()) {
     const key = push(ref(db, "estacionados")).key;
     await set(ref(db, `estacionados/${key}`), {
-      id: key, placa, tipo, notas, entradaISO, horaTexto
+      id: key,
+      placa,
+      tipo,
+      notas,
+      entradaISO,
+      horaTexto,
+      entradaEditada
     });
     return key;
   } else {
     const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
     const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
-    pend.push({ id: localId, placa, tipo, notas, entradaISO, horaTexto });
+    pend.push({ id: localId, placa, tipo, notas, entradaISO, horaTexto, entradaEditada });
     LS.set(KEYS.PENDING_ENTRADAS, pend);
     console.log("📦 Entrada en cola:", localId);
     return localId;
@@ -105,7 +111,6 @@ export function onEstacionados(callback) {
 
 // ---------- Guardar SALIDA en /salidas ----------
 async function writeSalida(meta, estacionadoIdOrNull) {
-  // meta debe traer: placa, tipo, notas, entradaISO, salidaISO, totalMin, totalCobrado, duracionTexto
   const key = push(ref(db, "salidas")).key;
   await set(ref(db, `salidas/${key}`), {
     id: key,
@@ -117,19 +122,14 @@ async function writeSalida(meta, estacionadoIdOrNull) {
 
 // ---------- Baja de entrada (SALIDA) + HISTORIAL ----------
 export async function removeEstacionado(id, meta = null) {
-  // meta puede venir nula si el caller viejo no lo envía; pero tu index ahora sí la manda.
   const salidaPayload = meta || {};
 
-  // Caso 1: id real de Firebase
   if (!id.startsWith("local-")) {
     if (isOnline()) {
-      // 1) guardo historial
       await writeSalida(salidaPayload, id);
-      // 2) borro de estacionados
       await remove(ref(db, `estacionados/${id}`));
       return;
     } else {
-      // Encolo la salida con id Firebase y meta
       const outs = LS.get(KEYS.PENDING_SALIDAS, []);
       outs.push({ id, meta: salidaPayload });
       LS.set(KEYS.PENDING_SALIDAS, outs);
@@ -138,11 +138,9 @@ export async function removeEstacionado(id, meta = null) {
     }
   }
 
-  // Caso 2: id local (offline)
   const localId = id;
 
   if (isOnline()) {
-    // Intento resolver el firebaseId
     let firebaseId = idMapGet(localId);
     if (!firebaseId) {
       const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(localId));
@@ -160,14 +158,12 @@ export async function removeEstacionado(id, meta = null) {
       await remove(ref(db, `estacionados/${firebaseId}`));
       idMapDeleteLocal(localId);
     } else {
-      // Aún no subió su réplica → encolo salida por localId + meta
       const outs = LS.get(KEYS.PENDING_SALIDAS, []);
       outs.push({ localId, meta: salidaPayload });
       LS.set(KEYS.PENDING_SALIDAS, outs);
       console.log("📦 Salida en cola (localId):", localId);
     }
   } else {
-    // Sin conexión: encolo salida por localId y saco de pendientes de entrada para que desaparezca de la UI
     const outs = LS.get(KEYS.PENDING_SALIDAS, []);
     outs.push({ localId, meta: salidaPayload });
     LS.set(KEYS.PENDING_SALIDAS, outs);
@@ -196,7 +192,8 @@ async function processQueues() {
         tipo: item.tipo,
         notas: item.notas,
         entradaISO: item.entradaISO,
-        horaTexto: item.horaTexto
+        horaTexto: item.horaTexto,
+        entradaEditada: item.entradaEditada || false
       });
       idMapSet(item.id, key);
       pend = LS.get(KEYS.PENDING_ENTRADAS, []).filter(x => x.id !== item.id);
@@ -228,13 +225,10 @@ async function processQueues() {
       }
 
       if (firebaseId) {
-        // 1) historial
         await writeSalida(o.meta || {}, firebaseId);
-        // 2) baja de estacionados
         await remove(ref(db, `estacionados/${firebaseId}`));
         if (o.localId) idMapDeleteLocal(o.localId);
       } else {
-        // No lo pude resolver aún; lo reintento más tarde
         remaining.push(o);
       }
     } catch (e) {
@@ -245,7 +239,7 @@ async function processQueues() {
   LS.set(KEYS.PENDING_SALIDAS, remaining);
 }
 
-// Arranque: si ya estamos online, proceso colas
+// ---------- Arranque ----------
 if (isOnline()) {
   processQueues();
 }
