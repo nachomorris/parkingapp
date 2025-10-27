@@ -38,9 +38,18 @@
       margin-left:6px;
       font-size:16px;
       line-height:1;
-      color:#4a90e2; /* azul elegante */
+      color:#4a90e2;
       vertical-align:middle;
     }
+
+    /* Botón ícono junto al campo de hora */
+    .time-row { display:flex; gap:8px; align-items:center; }
+    .icon-btn{
+      width:auto; padding:8px 10px; font-size:16px; line-height:1;
+      background:#4a90e2; color:#fff; border:none; border-radius:8px; cursor:pointer;
+    }
+    .icon-btn.small { padding:6px 10px; }
+    .icon-btn:hover{ background:#357abd; }
 
     .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
     .modal-content{background:#fff;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
@@ -64,7 +73,13 @@
       <section class="ingreso">
         <h2>INGRESO DE VEHÍCULO</h2>
         <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off" />
-        <input type="text" id="entryTime" value="" readonly />
+
+        <!-- Hora + botón de edición -->
+        <div class="time-row">
+          <input type="text" id="entryTime" value="" readonly />
+          <button id="editTimeBtn" class="icon-btn small" title="Editar hora">✎</button>
+        </div>
+
         <datalist id="placaSuggestions"></datalist>
         <input type="text" id="notas" placeholder="Notas" />
         <div class="vehicle-buttons">
@@ -104,6 +119,7 @@
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
+    const btnEditHora  = document.getElementById('editTimeBtn');
     const btnEntrada   = document.getElementById('btn-entrada');
     const lista        = document.getElementById('listaEstacionados');
     const countEl      = document.getElementById('count');
@@ -123,6 +139,11 @@
     let cobro = 0;
     let exitMeta = null;
 
+    // Estado de edición de hora
+    let isEditingTime = false;
+    let entradaManualISO = null;
+    let entradaEditada = false;
+
     // --- Selección tipo vehículo ---
     const autoBtn = document.getElementById('autoBtn');
     const camionetaBtn = document.getElementById('camionetaBtn');
@@ -135,7 +156,14 @@
       });
     });
 
-    function updateEntryTime(){ inputHora.value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}); }
+    function hhmmFromDate(d){
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+    }
+    function updateEntryTime(){
+      if (!isEditingTime) {
+        inputHora.value = hhmmFromDate(new Date());
+      }
+    }
     updateEntryTime(); setInterval(updateEntryTime,60000);
 
     function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',1800);}
@@ -145,25 +173,86 @@
     clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
     toggleClearBtn();
 
-    // (Opcional) Si existiera un botón con texto "Editar hora", renómbralo a ✎ sin romper nada
-    document.addEventListener('DOMContentLoaded', ()=>{
-      document.querySelectorAll('button').forEach(b=>{
-        if (b.textContent.trim().toLowerCase() === 'editar hora') {
-          b.textContent = '✎';
-          b.setAttribute('aria-label','Editar hora');
+    // --- Edición de hora (✎ / ✓) ---
+    btnEditHora.addEventListener('click', ()=>{
+      if (!isEditingTime) {
+        // pasar a modo edición
+        const now = new Date();
+        const [hh, mm] = hhmmFromDate(now).split(':');
+        inputHora.type = 'time';
+        inputHora.readOnly = false;
+        inputHora.value = `${hh}:${mm}`;
+        inputHora.focus();
+        btnEditHora.textContent = '✓';
+        isEditingTime = true;
+
+        // Enter dentro del time -> confirmar
+        inputHora.addEventListener('keydown', handleTimeEnter);
+      } else {
+        // confirmar edición
+        const val = inputHora.value; // "HH:MM"
+        if (!/^\d{2}:\d{2}$/.test(val)) {
+          toast('Hora inválida (usar HH:MM)');
+          return;
         }
-      });
+        const [h, m] = val.split(':').map(Number);
+        const d = new Date();
+        d.setHours(h, m, 0, 0);
+        entradaManualISO = d.toISOString();
+        entradaEditada = true;
+
+        inputHora.type = 'text';
+        inputHora.readOnly = true;
+        inputHora.value = `${val}`;
+        btnEditHora.textContent = '✎';
+        isEditingTime = false;
+
+        inputHora.removeEventListener('keydown', handleTimeEnter);
+        toast('Hora editada');
+      }
     });
 
+    function handleTimeEnter(e){
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btnEditHora.click();
+      }
+    }
+
+    // ---- ENTRADA ----
     btnEntrada.addEventListener('click',async(e)=>{
       e.preventDefault();
       const placa=(inputPatente.value||'').trim().toUpperCase();
       if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
-      const d=new Date();
-      await addEntrada({placa,tipo:tipoSeleccionado,notas:inputNotas.value||'',entradaISO:d.toISOString(),horaTexto:d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
-      inputPatente.value='';inputNotas.value='';inputPatente.focus();
-      tipoSeleccionado='auto';autoBtn.classList.add('active');camionetaBtn.classList.remove('active');motoBtn.classList.remove('active');
+
+      // usar la hora editada si existe
+      const usedDate = entradaManualISO ? new Date(entradaManualISO) : new Date();
+      const payload = {
+        placa,
+        tipo: tipoSeleccionado,
+        notas: inputNotas.value || '',
+        entradaISO: usedDate.toISOString(),
+        horaTexto: hhmmFromDate(usedDate),
+        entradaEditada: !!entradaEditada
+      };
+
+      await addEntrada(payload);
+
+      // Reset UI
+      inputPatente.value='';
+      inputNotas.value='';
+      inputPatente.focus();
+      tipoSeleccionado='auto';
+      autoBtn.classList.add('active');camionetaBtn.classList.remove('active');motoBtn.classList.remove('active');
       toast('Vehículo ingresado');
+
+      // Reset edición de hora
+      entradaManualISO = null;
+      entradaEditada = false;
+      if (isEditingTime) { // si quedó a medio editar, volver a normal
+        inputHora.type='text'; inputHora.readOnly=true; btnEditHora.textContent='✎'; isEditingTime=false;
+      }
+      updateEntryTime();
     });
 
     let cache=[];
@@ -186,17 +275,18 @@
         const time=document.createElement('span');
         time.className='time';
         time.textContent=hora;
-        left.appendChild(plate);
-        left.appendChild(time);
 
-        // ⏰ Si la hora fue editada (v.entradaEditada === true), mostrás el icono junto a la hora
+        // ⏰ si se editó
         if (v.entradaEditada === true) {
-          const flag = document.createElement('span');
-          flag.className = 'edited-flag';
-          flag.textContent = '⏰';
-          flag.title = 'Hora de ingreso editada';
+          const flag=document.createElement('span');
+          flag.className='edited-flag';
+          flag.textContent='⏰';
+          flag.title='Hora de ingreso editada';
           time.appendChild(flag);
         }
+
+        left.appendChild(plate);
+        left.appendChild(time);
 
         if(v.notas){
           const n=document.createElement('span');
@@ -230,16 +320,46 @@
       const bloques30=Math.ceil(restantes/30);
       total+=bloques30*(tarifaHora/2);
       cobro=Math.round(total);
-      exitMeta={placa:item.placa,tipo:item.tipo,notas:item.notas||"",entradaISO:item.entradaISO||entrada.toISOString(),salidaISO:salida.toISOString(),totalMin:min,totalCobrado:cobro,duracionTexto:formatHM(min)};
+      exitMeta={
+        placa:item.placa,
+        tipo:item.tipo,
+        notas:item.notas||"",
+        entradaISO:item.entradaISO||entrada.toISOString(),
+        salidaISO:salida.toISOString(),
+        totalMin:min,
+        totalCobrado:cobro,
+        duracionTexto:formatHM(min)
+      };
       exitTitle.textContent=item.placa.toUpperCase();
       exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
-      exitAmount.textContent=`$${cobro}`;paymentInput.value='';changeOutput.textContent='Vuelto: $0';exitModal.style.display='flex';
+      exitAmount.textContent=`$${cobro}`;
+      paymentInput.value='';
+      changeOutput.textContent='Vuelto: $0';
+      exitModal.style.display='flex';
     }
 
-    paymentInput.addEventListener('input',()=>{const pago=parseFloat(paymentInput.value)||0;const vuelto=pago-cobro;changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;});
-    confirmButton.addEventListener('click',async()=>{if(!currentItem)return;await removeEstacionado(currentItem.id,exitMeta);exitModal.style.display='none';toast('Salida confirmada');currentItem=null;exitMeta=null;});
+    paymentInput.addEventListener('input',()=>{
+      const pago=parseFloat(paymentInput.value)||0;
+      const vuelto=pago-cobro;
+      changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;
+    });
+
+    confirmButton.addEventListener('click',async()=>{
+      if(!currentItem)return;
+      await removeEstacionado(currentItem.id, exitMeta);
+      exitModal.style.display='none';
+      toast('Salida confirmada');
+      currentItem=null; exitMeta=null;
+    });
     closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
-    inputPatente.addEventListener('keypress',e=>{if(e.key==='Enter'){e.preventDefault();btnEntrada.click();}});
+
+    // ENTER para ingresar vehículo desde patente
+    inputPatente.addEventListener('keypress',(e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        btnEntrada.click();
+      }
+    });
   </script>
 </body>
 </html>
