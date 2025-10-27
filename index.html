@@ -156,7 +156,7 @@
     updateEntryTime();
     setInterval(updateEntryTime,60000);
 
-    // Editar hora en el MISMO campo
+    // Editar hora en el MISMO campo (sin seleccionar el texto)
     let horaFueEditada = false;
     const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -164,7 +164,11 @@
       inputHora.removeAttribute('readonly');
       inputHora.classList.add('editing');
       inputHora.focus();
-      inputHora.select();
+      // Colocar el cursor al final SIN seleccionar texto (con pequeño defer por compatibilidad)
+      const len = inputHora.value.length;
+      setTimeout(()=> {
+        try { inputHora.setSelectionRange(len, len); } catch {}
+      }, 0);
     }
     function disableHourEdit(commit=true){
       inputHora.setAttribute('readonly','readonly');
@@ -177,7 +181,6 @@
           horaFueEditada = false;
           return;
         }
-        // Si difiere de la hora auto, marcamos editado
         horaFueEditada = true;
       }
     }
@@ -194,7 +197,6 @@
         disableHourEdit(true);
       }
       if (e.key === 'Escape') {
-        // cancelar cambios y restaurar hora actual
         inputHora.value = nowHHMM();
         horaFueEditada = false;
         disableHourEdit(false);
@@ -244,7 +246,6 @@
       inputPatente.focus();
       tipoSeleccionado='auto';autoBtn.classList.add('active');camionetaBtn.classList.remove('active');motoBtn.classList.remove('active');
       horaFueEditada = false;
-      // bloquear de nuevo el campo (queda readonly y luego el intervalo lo sigue actualizando)
       inputHora.value = nowHHMM();
       inputHora.setAttribute('readonly','readonly');
       inputHora.classList.remove('editing');
@@ -296,7 +297,7 @@
     // Util formato duración
     function formatHM(totalMin){const h=Math.floor(totalMin/60);const m=totalMin%60;if(h<=0)return`${m} min`;if(m<=0)return`${h} h`;return`${h} h ${m} min`;}
 
-    // Modal SALIDA (misma lógica de cobro)
+    // Modal SALIDA
     function openExitModal(item){
       currentItem=item;
       const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
