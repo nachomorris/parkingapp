@@ -17,7 +17,7 @@
     .ingreso input#placa{font-size:1.1em;padding:10px}
     .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
 
-    /* alineación y botón de editar hora */
+    /* Hora + botón alineados */
     .time-row{display:flex;align-items:center;gap:8px}
     .time-row input{flex:1}
     .edit-hour-btn{
@@ -27,6 +27,13 @@
       font-size:18px;cursor:pointer;
     }
     .edit-hour-btn:hover{background:#357abd}
+
+    /* Badge azul "EDITADO" */
+    .badge-edited{
+      display:inline-block; margin-left:6px; padding:2px 6px;
+      font-size:.72em; font-weight:700; color:#fff; background:#4a90e2;
+      border-radius:999px; line-height:1; vertical-align:baseline;
+    }
 
     input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
     input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
@@ -240,7 +247,7 @@
         const left=document.createElement('div');
         const plate=document.createElement('span');plate.className='plate';plate.textContent=`${emoji} ${v.placa}`;
         const time=document.createElement('span');time.className='time';
-        time.textContent = hora + (v.edited ? ' ⏱' : '');
+        time.innerHTML = `${hora}${v.edited ? ' <span class="badge-edited" title="Horario editado">EDITADO</span>' : ''}`;
         left.appendChild(plate);left.appendChild(time);
         if(v.notas){const n=document.createElement('span');n.className='note';n.textContent=v.notas;left.appendChild(n);}
 
@@ -283,7 +290,6 @@
       if(!currentItem) return;
       try{
         await removeEstacionado(currentItem.id, exitMeta);
-        // Remuevo de la lista local al instante
         cache = cache.filter(x => x.id !== currentItem.id);
         render();
         exitModal.style.display='none';
