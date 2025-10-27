@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Administración — Exportar & Resetear BD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root{
+      --blue:#3498db;
+      --blue-dark:#2980b9;
+      --grey:#7f8c8d;
+      --danger:#e74c3c;
+      --danger-dark:#c0392b;
+      --bg:#ecf0f1;
+      --card:#ffffff;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Roboto',sans-serif;
+      background:var(--bg);
+      min-height:100vh;
+      display:flex; align-items:center; justify-content:center;
+      padding:14px;
+    }
+    .container{
+      width:100%; max-width:980px;
+      background:var(--card); border-radius:14px; overflow:hidden;
+      box-shadow:0 8px 24px rgba(0,0,0,.08);
+      display:flex; flex-direction:column;
+    }
+    header{
+      background:var(--blue);
+      color:#fff; padding:18px 20px;
+      border-bottom:2px solid var(--blue-dark);
+      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    header .title{font-size:1.25rem; font-weight:700}
+    header .sub{opacity:.9; font-size:.9rem}
+
+    main{ padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .card{
+      border:1px solid #e6ecf0; border-radius:10px; overflow:hidden; background:#fff;
+    }
+    .card h3{
+      background:#f7fbff; color:#2c3e50; border-bottom:1px solid #e6ecf0;
+      padding:10px 12px; font-size:1rem; text-transform:uppercase; letter-spacing:.02em;
+    }
+    .card .content{ padding:12px; display:flex; flex-direction:column; gap:10px; }
+
+    .stat{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px; background:#fafafa; border:1px solid #f0f0f0; border-radius:8px;
+      font-size:.95rem;
+    }
+    .stat b{font-size:1.05rem}
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:10px 12px; border:none; border-radius:8px; cursor:pointer;
+      font-weight:700; color:#fff; background:var(--blue);
+    }
+    .btn:hover{ background:var(--blue-dark); }
+    .btn.grey{ background:var(--grey); }
+    .btn.grey:hover{ filter:brightness(.9); }
+    .btn.danger{ background:var(--danger); }
+    .btn.danger:hover{ background:var(--danger-dark); }
+    .btn.outline{
+      background:#fff; color:var(--blue); border:2px solid var(--blue);
+    }
+    .btn.outline:hover{ background:#f0f7fd; }
+
+    .hint{ font-size:.9rem; color:#566; opacity:.9 }
+
+    footer{
+      padding:12px 18px; border-top:1px solid #e6ecf0; display:flex; justify-content:flex-end; gap:8px;
+    }
+
+    @media (max-width:900px){ main{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">Administración — Exportar & Resetear BD</div>
+      <div class="sub">Proyecto: Gestor de Estacionamiento</div>
+    </header>
+
+    <main>
+      <!-- ESTADO -->
+      <section class="card">
+        <h3>Estado actual</h3>
+        <div class="content">
+          <div class="stat"><span>Conexión</span><b id="netStatus">—</b></div>
+          <div class="stat"><span>Estacionados (nodo /estacionados)</span><b id="countEst">—</b></div>
+          <div class="stat"><span>Historial de salidas (nodo /salidas)</span><b id="countSal">—</b></div>
+          <div class="stat"><span>Pendientes offline — Entradas</span><b id="countPendEnt">—</b></div>
+          <div class="stat"><span>Pendientes offline — Salidas</span><b id="countPendSal">—</b></div>
+          <div class="hint">Tip: Antes de resetear, <b>exportá un backup</b>.</div>
+        </div>
+      </section>
+
+      <!-- EXPORTAR -->
+      <section class="card">
+        <h3>Exportar</h3>
+        <div class="content">
+          <button class="btn" id="expTodoJson">Exportar TODO (JSON único)</button>
+          <button class="btn outline" id="expEstJson">Exportar /estacionados (JSON)</button>
+          <button class="btn outline" id="expSalJson">Exportar /salidas (JSON)</button>
+          <button class="btn grey" id="expSalCsv">Exportar /salidas (CSV)</button>
+          <div class="hint">El CSV usa “;” como separador (igual que tu dashboard).</div>
+        </div>
+      </section>
+
+      <!-- LIMPIEZA OFFLINE -->
+      <section class="card">
+        <h3>Colas offline (LocalStorage)</h3>
+        <div class="content">
+          <div class="hint">Estas colas guardan operaciones cuando no hay conexión. Limpiarlas NO borra Firebase.</div>
+          <button class="btn grey" id="clearQueues">Vaciar colas offline (entradas/salidas/map)</button>
+        </div>
+      </section>
+
+      <!-- RESETEO -->
+      <section class="card">
+        <h3>Resetear base de datos</h3>
+        <div class="content">
+          <button class="btn danger" id="resetSalidas">Borrar SOLO /salidas</button>
+          <button class="btn danger" id="resetTodo">Borrar TODO (/estacionados + /salidas)</button>
+          <div class="hint">Acción irreversible. Se pedirán confirmaciones.</div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="btn outline" href="./index.html">Volver a la app</a>
+      <a class="btn outline" href="./dashboard.html">Ir al dashboard</a>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase.js';
+    import {
+      ref, get, set, onValue, remove
+    } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+    // ===== Utils =====
+    const $ = (id)=>document.getElementById(id);
+    const ts = ()=> new Date().toISOString().replace(/[:.]/g,'-');
+    const isOnline = ()=> navigator.onLine === true;
+
+    function downloadBlob(filename, blob){
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    function toCsv(rows){
+      return rows.map(r => r.map(v => {
+        const s = String(v ?? '');
+        if (s.includes(';') || s.includes('"') || s.includes('\n')){
+          return '"' + s.replace(/"/g,'""') + '"';
+        }
+        return s;
+      }).join(';')).join('\n');
+    }
+
+    // ===== Estado de red =====
+    function paintNet(){
+      $('netStatus').textContent = isOnline() ? 'Online ✅' : 'Offline 📴';
+    }
+    window.addEventListener('online', paintNet);
+    window.addEventListener('offline', paintNet);
+    paintNet();
+
+    // ===== Cargar contadores =====
+    async function loadCounts(){
+      // estacionados
+      const estSnap = await get(ref(db, 'estacionados'));
+      const estObj = estSnap.val() || {};
+      const estArr = Object.values(estObj);
+      $('countEst').textContent = estArr.length;
+
+      // salidas
+      const salSnap = await get(ref(db, 'salidas'));
+      const salObj = salSnap.val() || {};
+      const salArr = Object.values(salObj);
+      $('countSal').textContent = salArr.length;
+
+      // colas offline (por convención de tu firebase.js)
+      const pendEnt = JSON.parse(localStorage.getItem('parking_pending_entradas') || '[]');
+      const pendSal = JSON.parse(localStorage.getItem('parking_pending_salidas')  || '[]');
+      $('countPendEnt').textContent = pendEnt.length;
+      $('countPendSal').textContent = pendSal.length;
+    }
+    loadCounts();
+
+    // ===== Exportar TODO (JSON único) =====
+    $('expTodoJson').addEventListener('click', async ()=>{
+      const [estSnap, salSnap] = await Promise.all([
+        get(ref(db, 'estacionados')),
+        get(ref(db, 'salidas')),
+      ]);
+      const payload = {
+        exportTs: new Date().toISOString(),
+        estacionados: estSnap.val() || {},
+        salidas: salSnap.val() || {},
+        // opcional: adjuntar colas offline
+        offline_queues: {
+          pending_entradas: JSON.parse(localStorage.getItem('parking_pending_entradas') || '[]'),
+          pending_salidas:  JSON.parse(localStorage.getItem('parking_pending_salidas')  || '[]'),
+          idmap:            JSON.parse(localStorage.getItem('parking_localId_to_firebaseId') || '{}'),
+        }
+      };
+      const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+      downloadBlob(`backup_total_${ts()}.json`, blob);
+    });
+
+    // ===== Exportar /estacionados (JSON) =====
+    $('expEstJson').addEventListener('click', async ()=>{
+      const snap = await get(ref(db, 'estacionados'));
+      const blob = new Blob([JSON.stringify(snap.val()||{}, null, 2)], {type:'application/json'});
+      downloadBlob(`estacionados_${ts()}.json`, blob);
+    });
+
+    // ===== Exportar /salidas (JSON) =====
+    $('expSalJson').addEventListener('click', async ()=>{
+      const snap = await get(ref(db, 'salidas'));
+      const blob = new Blob([JSON.stringify(snap.val()||{}, null, 2)], {type:'application/json'});
+      downloadBlob(`salidas_${ts()}.json`, blob);
+    });
+
+    // ===== Exportar /salidas (CSV) =====
+    $('expSalCsv').addEventListener('click', async ()=>{
+      const snap = await get(ref(db, 'salidas'));
+      const obj = snap.val() || {};
+      const arr = Object.values(obj);
+      const rows = [['Patente','Tipo','EntradaISO','SalidaISO','Duración','Cobrado','$Editado']];
+      arr.forEach(x=>{
+        rows.push([
+          x.placa || '',
+          x.tipo || '',
+          x.entradaISO || '',
+          x.salidaISO || '',
+          x.duracionTexto || '',
+          typeof x.totalCobrado === 'number' ? x.totalCobrado : '',
+          (x.edited === true || x.entradaEditada === true) ? 'Sí' : 'No'
+        ]);
+      });
+      const csv = toCsv(rows);
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      downloadBlob(`salidas_${ts()}.csv`, blob);
+    });
+
+    // ===== Limpiar colas offline =====
+    $('clearQueues').addEventListener('click', ()=>{
+      if (!confirm('¿Vaciar colas offline (entradas/salidas/map)? Esto NO borra Firebase.')) return;
+      localStorage.removeItem('parking_pending_entradas');
+      localStorage.removeItem('parking_pending_salidas');
+      localStorage.removeItem('parking_localId_to_firebaseId');
+      alert('Colas offline vaciadas ✅');
+      loadCounts();
+    });
+
+    // ===== Reset: SOLO /salidas =====
+    $('resetSalidas').addEventListener('click', async ()=>{
+      if (!confirm('Vas a BORRAR TODO el historial (/salidas). ¿Continuar?')) return;
+      if (!confirm('Última confirmación: esta acción es definitiva.')) return;
+      await remove(ref(db, 'salidas'));
+      alert('Historial /salidas borrado ✅');
+      loadCounts();
+    });
+
+    // ===== Reset: TODO =====
+    $('resetTodo').addEventListener('click', async ()=>{
+      if (!confirm('Vas a BORRAR /estacionados y /salidas COMPLETOS. ¿Continuar?')) return;
+      if (!confirm('Última confirmación: esta acción es IRREVERSIBLE.')) return;
+      await remove(ref(db, 'estacionados'));
+      await remove(ref(db, 'salidas'));
+      alert('Base de datos reseteada por completo ✅');
+      loadCounts();
+    });
+  </script>
+</body>
+</html>
