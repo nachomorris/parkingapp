@@ -16,6 +16,18 @@
     .ingreso{display:flex;flex-direction:column;gap:10px}
     .ingreso input#placa{font-size:1.1em;padding:10px}
     .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
+
+    /* alineación y botón de editar hora */
+    .time-row{display:flex;align-items:center;gap:8px}
+    .time-row input{flex:1}
+    .edit-hour-btn{
+      width:44px;height:44px;min-width:44px;
+      background:#4a90e2;color:#fff;border:none;border-radius:8px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;cursor:pointer;
+    }
+    .edit-hour-btn:hover{background:#357abd}
+
     input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
     input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
     button{width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.2em}
@@ -27,7 +39,7 @@
     .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
     .clear-filter-btn.active{display:block}
     ul{list-style:none;padding-bottom:60px;}
-    li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9fa;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
+    li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
     .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
     .time{font-size:.8em;color:#666;margin-top:4px;display:block}
     .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
@@ -43,18 +55,6 @@
     .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
     .toast.show{visibility:visible;animation:fadeInOut 2s}
     @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
-
-    /* --- Botón editar hora (✎) y estilo del campo en edición --- */
-    .time-row { display:flex; gap:8px; align-items:center; }
-    .edit-time-btn{
-      width:auto; padding:8px 10px; border-radius:8px; background:#4a90e2; color:#fff; font-size:14px; cursor:pointer; border:none;
-    }
-    .edit-time-btn:hover{ background:#357abd; }
-    #entryTime.editing{ border-color:#357abd; box-shadow:0 0 6px rgba(53,122,189,.5); }
-
-    /* Buscar */
-    #searchInput{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
-    #searchInput:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
   </style>
 
   <script type="module" src="./firebase.js"></script>
@@ -64,13 +64,18 @@
     <div class="form-section">
       <section class="ingreso">
         <h2>INGRESO DE VEHÍCULO</h2>
+
         <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off" />
+
+        <!-- Hora + botón alineados -->
         <div class="time-row">
           <input type="text" id="entryTime" value="" readonly />
-          <button type="button" id="editTimeBtn" class="edit-time-btn" title="Editar hora">✎</button>
+          <button id="editHourBtn" class="edit-hour-btn" title="Editar hora">✎</button>
         </div>
+
         <datalist id="placaSuggestions"></datalist>
         <input type="text" id="notas" placeholder="Notas" />
+
         <div class="vehicle-buttons">
           <button id="autoBtn" class="vehicle-btn active" data-tipo="auto">🚗</button>
           <button id="camionetaBtn" class="vehicle-btn" data-tipo="camioneta">🚐</button>
@@ -109,13 +114,12 @@
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
-    const editTimeBtn  = document.getElementById('editTimeBtn');
+    const editHourBtn  = document.getElementById('editHourBtn');
     const btnEntrada   = document.getElementById('btn-entrada');
     const lista        = document.getElementById('listaEstacionados');
     const countEl      = document.getElementById('count');
     const searchInput  = document.getElementById('searchInput');
     const clearBtn     = document.getElementById('clearFilterBtn');
-
     const exitModal    = document.getElementById('exitModal');
     const closeModal   = document.getElementById('closeModal');
     const exitTitle    = document.getElementById('exitTitle');
@@ -125,16 +129,16 @@
     const changeOutput = document.getElementById('changeOutput');
     const confirmButton= document.getElementById('confirmButton');
 
-    // Estado
     let tipoSeleccionado = 'auto';
     let currentItem = null;
     let cobro = 0;
     let exitMeta = null;
+    let horaEditada = false; // ← marca si el usuario tocó la hora
 
-    // Selección tipo
     const autoBtn = document.getElementById('autoBtn');
     const camionetaBtn = document.getElementById('camionetaBtn');
     const motoBtn = document.getElementById('motoBtn');
+
     document.querySelectorAll('[data-tipo]').forEach(btn=>{
       btn.addEventListener('click',()=>{
         document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
@@ -143,124 +147,87 @@
       });
     });
 
-    // Hora viva
     function nowHHMM(){
-      const d = new Date();
+      const d=new Date();
       return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
     }
     function updateEntryTime(){
-      if (inputHora.hasAttribute('readonly')) {
-        inputHora.value = nowHHMM();
-      }
+      if (!horaEditada) inputHora.value = nowHHMM(); // no pisar si el usuario editó
     }
-    updateEntryTime();
-    setInterval(updateEntryTime,60000);
+    updateEntryTime(); setInterval(updateEntryTime,60000);
 
-    // Editar hora en el MISMO campo (sin seleccionar el texto)
-    let horaFueEditada = false;
-    const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
-
-    function enableHourEdit(){
-      inputHora.removeAttribute('readonly');
-      inputHora.classList.add('editing');
-      inputHora.focus();
-      // Colocar el cursor al final SIN seleccionar texto (con pequeño defer por compatibilidad)
-      const len = inputHora.value.length;
-      setTimeout(()=> {
-        try { inputHora.setSelectionRange(len, len); } catch {}
-      }, 0);
-    }
-    function disableHourEdit(commit=true){
-      inputHora.setAttribute('readonly','readonly');
-      inputHora.classList.remove('editing');
-      if (commit){
-        const val = (inputHora.value||'').trim();
-        if (!HHMM.test(val)) {
-          toast('Formato inválido. Usá HH:MM (24h)');
-          inputHora.value = nowHHMM();
-          horaFueEditada = false;
-          return;
-        }
-        horaFueEditada = true;
-      }
-    }
-    editTimeBtn.addEventListener('click', ()=>{
-      if (inputHora.hasAttribute('readonly')) {
-        enableHourEdit();
-      } else {
-        disableHourEdit(true);
-      }
-    });
-    inputHora.addEventListener('keydown', (e)=>{
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        disableHourEdit(true);
-      }
-      if (e.key === 'Escape') {
-        inputHora.value = nowHHMM();
-        horaFueEditada = false;
-        disableHourEdit(false);
-      }
-    });
-    inputHora.addEventListener('blur', ()=>{
-      if (!inputHora.hasAttribute('readonly')) disableHourEdit(true);
-    });
-
-    // Toast
     function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',1800);}
 
-    // Mostrar/ocultar botón "Borrar filtro"
     function toggleClearBtn(){const hasText=(searchInput.value||'').trim().length>0;clearBtn.classList.toggle('active',hasText);}
     searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
     clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
     toggleClearBtn();
 
-    // Util: construir ISO hoy con HH:MM local
-    function isoFromHHMMToday(hhmm){
-      const [hh,mm] = hhmm.split(':').map(Number);
+    // Botón ✎: habilita edición sin seleccionar todo el texto
+    editHourBtn.addEventListener('click', ()=>{
+      inputHora.readOnly = false;
+      horaEditada = true;
+      // poner cursor al final sin selección
+      const v = inputHora.value;
+      requestAnimationFrame(()=>{
+        inputHora.focus();
+        const len = v.length;
+        if (inputHora.setSelectionRange) inputHora.setSelectionRange(len, len);
+      });
+    });
+
+    // Construye un ISO hoy con HH:MM
+    function isoTodayFromHHMM(hhmm){
+      const [h,m] = (hhmm||'').split(':').map(x=>parseInt(x,10));
       const d = new Date();
-      d.setHours(hh, mm, 0, 0);
+      if (!isNaN(h)) d.setHours(h);
+      if (!isNaN(m)) d.setMinutes(m);
+      d.setSeconds(0); d.setMilliseconds(0);
       return d.toISOString();
     }
 
-    // ENTRADA
     btnEntrada.addEventListener('click',async(e)=>{
       e.preventDefault();
       const placa=(inputPatente.value||'').trim().toUpperCase();
       if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
-      const horaTexto = (inputHora.value||'').trim();
-      const valid = HHMM.test(horaTexto);
-      const entradaISO = valid ? isoFromHHMMToday(horaTexto) : new Date().toISOString();
+
+      let entradaISO, horaTexto;
+      if (horaEditada){
+        horaTexto = inputHora.value;
+        entradaISO = isoTodayFromHHMM(horaTexto);
+      }else{
+        const d = new Date();
+        entradaISO = d.toISOString();
+        horaTexto = nowHHMM();
+      }
 
       await addEntrada({
         placa,
         tipo: tipoSeleccionado,
         notas: inputNotas.value || '',
         entradaISO,
-        horaTexto: valid ? horaTexto : nowHHMM(),
-        horaEditada: !!horaFueEditada
+        horaTexto,
+        edited: !!horaEditada  // ← bandera para mostrar ⏱
       });
 
-      // Reset
-      inputPatente.value=''; inputNotas.value='';
-      inputPatente.focus();
-      tipoSeleccionado='auto';autoBtn.classList.add('active');camionetaBtn.classList.remove('active');motoBtn.classList.remove('active');
-      horaFueEditada = false;
-      inputHora.value = nowHHMM();
-      inputHora.setAttribute('readonly','readonly');
-      inputHora.classList.remove('editing');
+      // Reset UI + vuelve a AUTO
+      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
+      tipoSeleccionado='auto';
+      autoBtn.classList.add('active'); camionetaBtn.classList.remove('active'); motoBtn.classList.remove('active');
+
+      // reset edición de hora
+      inputHora.readOnly = true;
+      horaEditada = false;
+      updateEntryTime();
 
       toast('Vehículo ingresado');
     });
 
-    // ENTER en patente para disparar entrada
-    inputPatente.addEventListener('keypress',(e)=>{
-      if(e.key==='Enter'){ e.preventDefault(); btnEntrada.click(); }
-    });
+    // ENTER para ingresar
+    inputPatente.addEventListener('keypress',e=>{if(e.key==='Enter'){e.preventDefault();btnEntrada.click();}});
 
-    // LISTADO
     let cache=[];
-    onEstacionados(items=>{ cache=items||[]; render(); });
+    onEstacionados(items=>{cache=items||[];render();});
 
     function render(){
       const term=(searchInput.value||'').trim().toUpperCase();
@@ -269,19 +236,15 @@
       filtered.forEach(v=>{
         const li=document.createElement('li');
         const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
-
-        const horaBase = v.entradaISO
-          ? new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
-          : (v.horaTexto||'');
-
-        const reloj = v.horaEditada ? ' ⏰' : '';
-        const hora = horaBase + reloj;
+        const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):(v.horaTexto||'');
 
         const left=document.createElement('div');
         const plate=document.createElement('span');plate.className='plate';plate.textContent=`${emoji} ${v.placa}`;
-        const time=document.createElement('span');time.className='time';time.textContent=hora;
+        const time=document.createElement('span');time.className='time';
+        time.textContent = hora + (v.edited ? ' ⏱' : '');
         left.appendChild(plate);left.appendChild(time);
         if(v.notas){const n=document.createElement('span');n.className='note';n.textContent=v.notas;left.appendChild(n);}
+
         const del=document.createElement('button');del.className='delete-btn';del.textContent='SALIDA';del.addEventListener('click',()=>openExitModal(v));
         li.appendChild(left);li.appendChild(del);lista.appendChild(li);
       });
@@ -294,10 +257,8 @@
       });
     }
 
-    // Util formato duración
     function formatHM(totalMin){const h=Math.floor(totalMin/60);const m=totalMin%60;if(h<=0)return`${m} min`;if(m<=0)return`${h} h`;return`${h} h ${m} min`;}
 
-    // Modal SALIDA
     function openExitModal(item){
       currentItem=item;
       const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
@@ -310,16 +271,7 @@
       const bloques30=Math.ceil(restantes/30);
       total+=bloques30*(tarifaHora/2);
       cobro=Math.round(total);
-      exitMeta={
-        placa:item.placa,
-        tipo:item.tipo,
-        notas:item.notas||"",
-        entradaISO:item.entradaISO||entrada.toISOString(),
-        salidaISO:salida.toISOString(),
-        totalMin:min,
-        totalCobrado:cobro,
-        duracionTexto:formatHM(min)
-      };
+      exitMeta={placa:item.placa,tipo:item.tipo,notas:item.notas||"",entradaISO:item.entradaISO||entrada.toISOString(),salidaISO:salida.toISOString(),totalMin:min,totalCobrado:cobro,duracionTexto:formatHM(min)};
       exitTitle.textContent=item.placa.toUpperCase();
       exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
       exitAmount.textContent=`$${cobro}`;paymentInput.value='';changeOutput.textContent='Vuelto: $0';exitModal.style.display='flex';
@@ -328,7 +280,6 @@
     paymentInput.addEventListener('input',()=>{const pago=parseFloat(paymentInput.value)||0;const vuelto=pago-cobro;changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;});
     confirmButton.addEventListener('click',async()=>{if(!currentItem)return;await removeEstacionado(currentItem.id,exitMeta);exitModal.style.display='none';toast('Salida confirmada');currentItem=null;exitMeta=null;});
     closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
-    document.addEventListener('keydown',(e)=>{if(exitModal.style.display==='flex'){if(e.key==='Enter')confirmButton.click();if(e.key==='Escape')closeModal.click();}});
   </script>
 </body>
 </html>
