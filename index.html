@@ -17,7 +17,7 @@
     .ingreso input#placa{font-size:1.1em;padding:10px}
     .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
 
-    /* Hora + botón alineados */
+    /* Hora + botón editar alineados */
     .time-row{display:flex;align-items:center;gap:8px}
     .time-row input{flex:1}
     .edit-hour-btn{
@@ -28,28 +28,41 @@
     }
     .edit-hour-btn:hover{background:#357abd}
 
-    /* Badge azul "EDITADO" */
-    .badge-edited{
-      display:inline-block; margin-left:6px; padding:2px 6px;
-      font-size:.72em; font-weight:700; color:#fff; background:#4a90e2;
-      border-radius:999px; line-height:1; vertical-align:baseline;
-    }
-
     input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
     input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
+
     button{width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.2em}
     button:hover{background:#357abd}
+
     .vehicle-btn{flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:20px;text-align:center;background:transparent;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 4px}
     .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 4px 8px rgba(0,0,0,.2)}
+
     .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
     .delete-btn:hover{background:#c0392b}
+
     .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
     .clear-filter-btn.active{display:block}
+
     ul{list-style:none;padding-bottom:60px;}
     li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
+
     .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
-    .time{font-size:.8em;color:#666;margin-top:4px;display:block}
+    .time{font-size:.85em;color:#555;margin-top:4px;display:flex;align-items:center;gap:6px}
     .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
+
+    /* Badge EDITADO */
+    .edited-badge{
+      display:inline-block;
+      font-size:.68em;
+      font-weight:700;
+      color:#1161c2;
+      background:#e6f0ff;
+      border:1px solid #bcd7ff;
+      padding:2px 6px;
+      border-radius:6px;
+      letter-spacing:.02em;
+    }
+
     .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
     .modal-content{background:#fff;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
     .modal-content h3{font-size:1.8em;margin-bottom:10px;text-transform:uppercase}
@@ -59,6 +72,7 @@
     .modal-content .change{font-weight:700;margin-bottom:10px;font-size:1em}
     .modal-content button{padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.1em}
     .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
+
     .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
     .toast.show{visibility:visible;animation:fadeInOut 2s}
     @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
@@ -127,6 +141,7 @@
     const countEl      = document.getElementById('count');
     const searchInput  = document.getElementById('searchInput');
     const clearBtn     = document.getElementById('clearFilterBtn');
+
     const exitModal    = document.getElementById('exitModal');
     const closeModal   = document.getElementById('closeModal');
     const exitTitle    = document.getElementById('exitTitle');
@@ -174,6 +189,7 @@
     editHourBtn.addEventListener('click', ()=>{
       inputHora.readOnly = false;
       horaEditada = true;
+      // cursor al final sin selección
       const v = inputHora.value;
       requestAnimationFrame(()=>{
         inputHora.focus();
@@ -213,15 +229,14 @@
         notas: inputNotas.value || '',
         entradaISO,
         horaTexto,
-        edited: !!horaEditada
+        edited: !!horaEditada  // bandera para UI y dashboard
       });
 
-      // Reset UI + vuelve a AUTO
+      // Reset UI
       inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
       tipoSeleccionado='auto';
       autoBtn.classList.add('active'); camionetaBtn.classList.remove('active'); motoBtn.classList.remove('active');
 
-      // reset edición de hora
       inputHora.readOnly = true;
       horaEditada = false;
       updateEntryTime();
@@ -239,20 +254,41 @@
       const term=(searchInput.value||'').trim().toUpperCase();
       const filtered=term?cache.filter(v=>(v.placa||'').toUpperCase().includes(term)):cache;
       lista.innerHTML='';countEl.textContent=cache.length;
+
       filtered.forEach(v=>{
         const li=document.createElement('li');
         const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
         const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):(v.horaTexto||'');
 
         const left=document.createElement('div');
-        const plate=document.createElement('span');plate.className='plate';plate.textContent=`${emoji} ${v.placa}`;
-        const time=document.createElement('span');time.className='time';
-        time.innerHTML = `${hora}${v.edited ? ' <span class="badge-edited" title="Horario editado">EDITADO</span>' : ''}`;
-        left.appendChild(plate);left.appendChild(time);
-        if(v.notas){const n=document.createElement('span');n.className='note';n.textContent=v.notas;left.appendChild(n);}
 
-        const del=document.createElement('button');del.className='delete-btn';del.textContent='SALIDA';del.addEventListener('click',()=>openExitModal(v));
-        li.appendChild(left);li.appendChild(del);lista.appendChild(li);
+        const plate=document.createElement('span');
+        plate.className='plate';
+        plate.textContent=`${emoji} ${v.placa}`;
+
+        const timeWrap=document.createElement('span');
+        timeWrap.className='time';
+        // hora + pill si editado
+        timeWrap.innerHTML = `${hora}${v.edited ? ' <span class="edited-badge">EDITADO</span>' : ''}`;
+
+        left.appendChild(plate);
+        left.appendChild(timeWrap);
+
+        if(v.notas){
+          const n=document.createElement('span');
+          n.className='note';
+          n.textContent=v.notas;
+          left.appendChild(n);
+        }
+
+        const del=document.createElement('button');
+        del.className='delete-btn';
+        del.textContent='SALIDA';
+        del.addEventListener('click',()=>openExitModal(v));
+
+        li.appendChild(left);
+        li.appendChild(del);
+        lista.appendChild(li);
       });
 
       // datalist
@@ -269,6 +305,7 @@
       currentItem=item;
       const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
       const salida=new Date();
+
       const min=Math.max(1,Math.ceil((salida-entrada)/60000));
       const TARIFAS={auto:1800,camioneta:2000,moto:1300};
       const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
@@ -277,32 +314,42 @@
       const bloques30=Math.ceil(restantes/30);
       total+=bloques30*(tarifaHora/2);
       cobro=Math.round(total);
-      exitMeta={placa:item.placa,tipo:item.tipo,notas:item.notas||"",entradaISO:item.entradaISO||entrada.toISOString(),salidaISO:salida.toISOString(),totalMin:min,totalCobrado:cobro,duracionTexto:formatHM(min)};
+
+      exitMeta={
+        placa:item.placa,
+        tipo:item.tipo,
+        notas:item.notas||"",
+        entradaISO:item.entradaISO||entrada.toISOString(),
+        salidaISO:salida.toISOString(),
+        totalMin:min,
+        totalCobrado:cobro,
+        duracionTexto:formatHM(min),
+        // 👉 importante para que el dashboard muestre el indicador
+        edited: (item.edited === true) || (item.entradaEditada === true)
+      };
+
       exitTitle.textContent=item.placa.toUpperCase();
       exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
-      exitAmount.textContent=`$${cobro}`;paymentInput.value='';changeOutput.textContent='Vuelto: $0';exitModal.style.display='flex';
+      exitAmount.textContent=`$${cobro}`;
+      paymentInput.value='';
+      changeOutput.textContent='Vuelto: $0';
+      exitModal.style.display='flex';
     }
 
-    paymentInput.addEventListener('input',()=>{const pago=parseFloat(paymentInput.value)||0;const vuelto=pago-cobro;changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;});
-
-    // ✅ Actualización optimista de la UI
-    confirmButton.addEventListener('click', async ()=>{
-      if(!currentItem) return;
-      try{
-        await removeEstacionado(currentItem.id, exitMeta);
-        cache = cache.filter(x => x.id !== currentItem.id);
-        render();
-        exitModal.style.display='none';
-        toast('Salida confirmada');
-      }catch(err){
-        console.error('Error al registrar salida:', err);
-        toast('Error al registrar salida');
-      }finally{
-        currentItem = null;
-        exitMeta = null;
-      }
+    paymentInput.addEventListener('input',()=>{
+      const pago=parseFloat(paymentInput.value)||0;
+      const vuelto=pago-cobro;
+      changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;
     });
 
+    confirmButton.addEventListener('click',async()=>{
+      if(!currentItem)return;
+      await removeEstacionado(currentItem.id, exitMeta);
+      exitModal.style.display='none';
+      toast('Salida confirmada');
+      currentItem=null;
+      exitMeta=null;
+    });
     closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
   </script>
 </body>
