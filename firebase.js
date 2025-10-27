@@ -1,320 +1,282 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestor de Estacionamiento</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+// ---------- Firebase SDK (CDN v11) ----------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  set,
+  onValue,
+  remove,
+  get,
+  query,
+  orderByChild,
+  equalTo,
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
-    body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
-    .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
-    .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
-    .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
-    h2{color:#333;margin:0 0 10px 0;font-size:1.3em;text-transform:uppercase}
-    .ingreso{display:flex;flex-direction:column;gap:10px}
-    .ingreso input#placa{font-size:1.1em;padding:10px}
-    .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
+// ---------- TU CONFIG ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyBMdSRkAjfWGOP0cnTUI2UEsbXBI3vTNIo",
+  authDomain: "parking-c5830.firebaseapp.com",
+  databaseURL: "https://parking-c5830-default-rtdb.firebaseio.com",
+  projectId: "parking-c5830",
+  storageBucket: "parking-c5830.appspot.com",
+  messagingSenderId: "242733687477",
+  appId: "1:242733687477:web:46cc3ac60656e14d114fc",
+  measurementId: "G-W9WTM7PT7Z"
+};
 
-    /* Alineación y botón de editar hora */
-    .time-row{display:flex;align-items:center;gap:8px}
-    .time-row input{flex:1}
-    .edit-hour-btn{
-      width:44px;height:44px;min-width:44px;
-      background:#4a90e2;color:#fff;border:none;border-radius:8px;
-      display:flex;align-items:center;justify-content:center;
-      font-size:18px;cursor:pointer;
-    }
-    .edit-hour-btn:hover{background:#357abd}
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+console.log("Firebase OK ✅");
 
-    /* Badge EDITADO */
-    .badge-edited{
-      display:inline-block;
-      margin-left:6px;
-      padding:2px 6px;
-      font-size:0.7em;
-      font-weight:700;
-      color:#fff;
-      background:#4a90e2;
-      border-radius:6px;
-      vertical-align:baseline;
-    }
+// ---------- LocalStorage helpers ----------
+const LS = {
+  get(key, def) {
+    try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; }
+  },
+  set(key, val) {
+    localStorage.setItem(key, JSON.stringify(val));
+  }
+};
+const KEYS = {
+  PENDING_ENTRADAS: "parking_pending_entradas",
+  PENDING_SALIDAS:  "parking_pending_salidas",
+  IDMAP:            "parking_localId_to_firebaseId"
+};
 
-    input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
-    input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
-    button{width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.2em}
-    button:hover{background:#357abd}
-    .vehicle-btn{flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:20px;text-align:center;background:transparent;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 4px}
-    .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 4px 8px rgba(0,0,0,.2)}
-    .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
-    .delete-btn:hover{background:#c0392b}
-    .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
-    .clear-filter-btn.active{display:block}
-    ul{list-style:none;padding-bottom:60px;}
-    li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
-    .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
-    .time{font-size:.8em;color:#666;margin-top:4px;display:block}
-    .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
-    .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
-    .modal-content{background:#fff;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
-    .modal-content h3{font-size:1.8em;margin-bottom:10px;text-transform:uppercase}
-    .modal-content p{margin-bottom:10px;font-size:1em}
-    .modal-content .amount{font-size:1.8em;font-weight:700;margin-bottom:10px}
-    .modal-content input{width:100%;padding:8px;margin-bottom:10px;font-size:1em}
-    .modal-content .change{font-weight:700;margin-bottom:10px;font-size:1em}
-    .modal-content button{padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.1em}
-    .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
-    .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
-    .toast.show{visibility:visible;animation:fadeInOut 2s}
-    @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
-  </style>
+// ---------- Estado online/offline ----------
+const isOnline = () => navigator.onLine === true;
+window.addEventListener("online",  () => { console.log("🔌 Online");  processQueues(); });
+window.addEventListener("offline", () => { console.log("📴 Offline"); });
 
-  <script type="module" src="./firebase.js"></script>
-</head>
-<body>
-  <div class="container">
-    <div class="form-section">
-      <section class="ingreso">
-        <h2>INGRESO DE VEHÍCULO</h2>
+// ---------- Mapa localId -> firebaseId ----------
+function idMapGet(localId) {
+  const map = LS.get(KEYS.IDMAP, {});
+  return map[localId] || null;
+}
+function idMapSet(localId, firebaseId) {
+  const map = LS.get(KEYS.IDMAP, {});
+  map[localId] = firebaseId;
+  LS.set(KEYS.IDMAP, map);
+}
+function idMapDeleteLocal(localId) {
+  const map = LS.get(KEYS.IDMAP, {});
+  delete map[localId];
+  LS.set(KEYS.IDMAP, map);
+}
 
-        <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off" />
+// ---------- API: Alta de entrada ----------
+// Compat: acepta `edited` (index) y/o `entradaEditada` (viejo)
+export async function addEntrada({ placa, tipo, notas, entradaISO, horaTexto, edited = false, entradaEditada = false }) {
+  const flag = !!(edited || entradaEditada);
 
-        <!-- Hora + botón alineados -->
-        <div class="time-row">
-          <input type="text" id="entryTime" value="" readonly />
-          <button id="editHourBtn" class="edit-hour-btn" title="Editar hora">✎</button>
-        </div>
-
-        <datalist id="placaSuggestions"></datalist>
-        <input type="text" id="notas" placeholder="Notas" />
-
-        <div class="vehicle-buttons">
-          <button id="autoBtn" class="vehicle-btn active" data-tipo="auto">🚗</button>
-          <button id="camionetaBtn" class="vehicle-btn" data-tipo="camioneta">🚐</button>
-          <button id="motoBtn" class="vehicle-btn" data-tipo="moto">🏍️</button>
-        </div>
-        <button id="btn-entrada">ENTRADA</button>
-      </section>
-    </div>
-
-    <div class="list-section">
-      <h2>ESTACIONADOS: <span id="count">0</span></h2>
-      <input type="text" id="searchInput" placeholder="BUSCAR PATENTE" />
-      <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
-      <ul id="listaEstacionados"></ul>
-    </div>
-  </div>
-
-  <!-- Modal de salida -->
-  <div id="exitModal" class="modal">
-    <div class="modal-content">
-      <span class="close-modal" id="closeModal">&times;</span>
-      <h3 id="exitTitle"></h3>
-      <p id="exitInfo"></p>
-      <p class="amount" id="exitAmount"></p>
-      <input type="number" id="paymentInput" placeholder="Monto pagado ($)" />
-      <p class="change" id="changeOutput">Vuelto: $0</p>
-      <button id="confirmButton">Confirmar</button>
-    </div>
-  </div>
-
-  <div id="toast" class="toast"></div>
-
-  <script type="module">
-    import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
-
-    const inputPatente = document.getElementById('placa');
-    const inputNotas   = document.getElementById('notas');
-    const inputHora    = document.getElementById('entryTime');
-    const editHourBtn  = document.getElementById('editHourBtn');
-    const btnEntrada   = document.getElementById('btn-entrada');
-    const lista        = document.getElementById('listaEstacionados');
-    const countEl      = document.getElementById('count');
-    const searchInput  = document.getElementById('searchInput');
-    const clearBtn     = document.getElementById('clearFilterBtn');
-    const exitModal    = document.getElementById('exitModal');
-    const closeModal   = document.getElementById('closeModal');
-    const exitTitle    = document.getElementById('exitTitle');
-    const exitInfo     = document.getElementById('exitInfo');
-    const exitAmount   = document.getElementById('exitAmount');
-    const paymentInput = document.getElementById('paymentInput');
-    const changeOutput = document.getElementById('changeOutput');
-    const confirmButton= document.getElementById('confirmButton');
-
-    let tipoSeleccionado = 'auto';
-    let currentItem = null;
-    let cobro = 0;
-    let exitMeta = null;
-    let horaEditada = false; // ← marca si el usuario tocó la hora
-
-    const autoBtn = document.getElementById('autoBtn');
-    const camionetaBtn = document.getElementById('camionetaBtn');
-    const motoBtn = document.getElementById('motoBtn');
-
-    document.querySelectorAll('[data-tipo]').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
-        btn.classList.add('active');
-        tipoSeleccionado = btn.dataset.tipo;
-      });
+  if (isOnline()) {
+    const key = push(ref(db, "estacionados")).key;
+    await set(ref(db, `estacionados/${key}`), {
+      id: key,
+      placa,
+      tipo,
+      notas,
+      entradaISO,
+      horaTexto,
+      // guardamos ambos por compatibilidad
+      edited: flag,
+      entradaEditada: flag
     });
-
-    function nowHHMM(){
-      const d=new Date();
-      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-    }
-    function updateEntryTime(){
-      if (!horaEditada) inputHora.value = nowHHMM(); // no pisar si el usuario editó
-    }
-    updateEntryTime(); setInterval(updateEntryTime,60000);
-
-    function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',1800);}
-
-    function toggleClearBtn(){const hasText=(searchInput.value||'').trim().length>0;clearBtn.classList.toggle('active',hasText);}
-    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
-    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
-    toggleClearBtn();
-
-    // Botón ✎: habilita edición sin seleccionar todo el texto
-    editHourBtn.addEventListener('click', ()=>{
-      inputHora.readOnly = false;
-      horaEditada = true;
-      const v = inputHora.value;
-      requestAnimationFrame(()=>{
-        inputHora.focus();
-        const len = v.length;
-        if (inputHora.setSelectionRange) inputHora.setSelectionRange(len, len); // cursor al final
-      });
+    return key;
+  } else {
+    const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+    pend.push({
+      id: localId,
+      placa,
+      tipo,
+      notas,
+      entradaISO,
+      horaTexto,
+      edited: flag,
+      entradaEditada: flag
     });
+    LS.set(KEYS.PENDING_ENTRADAS, pend);
+    console.log("📦 Entrada en cola:", localId);
+    return localId;
+  }
+}
 
-    // Construye un ISO hoy con HH:MM
-    function isoTodayFromHHMM(hhmm){
-      const [h,m] = (hhmm||'').split(':').map(x=>parseInt(x,10));
-      const d = new Date();
-      if (!isNaN(h)) d.setHours(h);
-      if (!isNaN(m)) d.setMinutes(m);
-      d.setSeconds(0); d.setMilliseconds(0);
-      return d.toISOString();
+// ---------- Suscripción al listado ----------
+export function onEstacionados(callback) {
+  const r = ref(db, "estacionados");
+  onValue(r, (snap) => {
+    const val = snap.val() || {};
+    let arr = Object.values(val).map(x => ({
+      ...x,
+      // normalizar bandera para el index
+      edited: x.edited === true || x.entradaEditada === true
+    })).sort((a,b) =>
+      (b.entradaISO || "").localeCompare(a.entradaISO || "")
+    );
+
+    // Si estoy offline, muestro también las pendientes (y normalizo)
+    const pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+    if (!isOnline() && pend.length) {
+      const existing = new Set(arr.map(x => `${x.placa}|${x.entradaISO}`));
+      const toMerge = pend
+        .filter(x => !existing.has(`${x.placa}|${x.entradaISO}`))
+        .map(x => ({ ...x, edited: x.edited === true || x.entradaEditada === true }));
+      arr = [...toMerge, ...arr];
+    }
+    callback(arr);
+  });
+}
+
+// ---------- Guardar SALIDA en /salidas ----------
+async function writeSalida(meta, estacionadoIdOrNull) {
+  const key = push(ref(db, "salidas")).key;
+  await set(ref(db, `salidas/${key}`), {
+    id: key,
+    ...meta,
+    estacionadoId: estacionadoIdOrNull || null,
+    ts: new Date().toISOString()
+  });
+}
+
+// ---------- Baja de entrada (SALIDA) + HISTORIAL ----------
+export async function removeEstacionado(id, meta = null) {
+  const salidaPayload = meta || {};
+
+  if (!id.startsWith("local-")) {
+    if (isOnline()) {
+      await writeSalida(salidaPayload, id);
+      await remove(ref(db, `estacionados/${id}`));
+      return;
+    } else {
+      const outs = LS.get(KEYS.PENDING_SALIDAS, []);
+      outs.push({ id, meta: salidaPayload });
+      LS.set(KEYS.PENDING_SALIDAS, outs);
+      console.log("📦 Salida en cola (firebaseId):", id);
+      return;
+    }
+  }
+
+  const localId = id;
+
+  if (isOnline()) {
+    let firebaseId = idMapGet(localId);
+    if (!firebaseId) {
+      const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(localId));
+      const snap = await get(q);
+      const data = snap.val() || {};
+      const keys = Object.keys(data);
+      if (keys.length > 0) {
+        firebaseId = keys[0];
+        idMapSet(localId, firebaseId);
+      }
     }
 
-    btnEntrada.addEventListener('click',async(e)=>{
-      e.preventDefault();
-      const placa=(inputPatente.value||'').trim().toUpperCase();
-      if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
+    if (firebaseId) {
+      await writeSalida(salidaPayload, firebaseId);
+      await remove(ref(db, `estacionados/${firebaseId}`));
+      idMapDeleteLocal(localId);
+    } else {
+      const outs = LS.get(KEYS.PENDING_SALIDAS, []);
+      outs.push({ localId, meta: salidaPayload });
+      LS.set(KEYS.PENDING_SALIDAS, outs);
+      console.log("📦 Salida en cola (localId):", localId);
+    }
+  } else {
+    const outs = LS.get(KEYS.PENDING_SALIDAS, []);
+    outs.push({ localId, meta: salidaPayload });
+    LS.set(KEYS.PENDING_SALIDAS, outs);
 
-      let entradaISO, horaTexto, entradaEditada;
-      if (horaEditada){
-        horaTexto = inputHora.value;
-        entradaISO = isoTodayFromHHMM(horaTexto);
-        entradaEditada = true;
-      }else{
-        const d = new Date();
-        entradaISO = d.toISOString();
-        horaTexto = nowHHMM();
-        entradaEditada = false;
+    let pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+    pend = pend.filter(x => x.id !== localId);
+    LS.set(KEYS.PENDING_ENTRADAS, pend);
+
+    console.log("📦 Salida en cola OFF (localId):", localId);
+  }
+}
+
+// ---------- Procesar colas ----------
+async function processQueues() {
+  if (!isOnline()) return;
+
+  // 1) Subo ENTRADAS pendientes (incluye ambas banderas)
+  let pend = LS.get(KEYS.PENDING_ENTRADAS, []);
+  for (const item of pend) {
+    try {
+      const flag = !!(item.edited || item.entradaEditada);
+      const key = push(ref(db, "estacionados")).key;
+      await set(ref(db, `estacionados/${key}`), {
+        id: key,
+        idOriginal: item.id,
+        placa: item.placa,
+        tipo: item.tipo,
+        notas: item.notas,
+        entradaISO: item.entradaISO,
+        horaTexto: item.horaTexto,
+        edited: flag,
+        entradaEditada: flag
+      });
+      idMapSet(item.id, key);
+      pend = LS.get(KEYS.PENDING_ENTRADAS, []).filter(x => x.id !== item.id);
+      LS.set(KEYS.PENDING_ENTRADAS, pend);
+    } catch (e) {
+      console.warn("Error subiendo entrada pendiente", item, e);
+    }
+  }
+
+  // 2) Proceso SALIDAS pendientes
+  let outs = LS.get(KEYS.PENDING_SALIDAS, []);
+  const remaining = [];
+  for (const o of outs) {
+    try {
+      let firebaseId = o.id || null;
+
+      if (!firebaseId && o.localId) {
+        firebaseId = idMapGet(o.localId);
+        if (!firebaseId) {
+          const q = query(ref(db, "estacionados"), orderByChild("idOriginal"), equalTo(o.localId));
+          const snap = await get(q);
+          const data = snap.val() || {};
+          const keys = Object.keys(data);
+          if (keys.length > 0) {
+            firebaseId = keys[0];
+            idMapSet(o.localId, firebaseId);
+          }
+        }
       }
 
-      await addEntrada({
-        placa,
-        tipo: tipoSeleccionado,
-        notas: inputNotas.value || '',
-        entradaISO,
-        horaTexto,
-        entradaEditada   // ← nombre que tu firebase.js espera
-      });
-
-      // Reset UI + vuelve a AUTO
-      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
-      tipoSeleccionado='auto';
-      autoBtn.classList.add('active'); camionetaBtn.classList.remove('active'); motoBtn.classList.remove('active');
-
-      // reset edición de hora
-      inputHora.readOnly = true;
-      horaEditada = false;
-      updateEntryTime();
-
-      toast('Vehículo ingresado');
-    });
-
-    // ENTER para ingresar
-    inputPatente.addEventListener('keypress',e=>{if(e.key==='Enter'){e.preventDefault();btnEntrada.click();}});
-
-    let cache=[];
-    onEstacionados(items=>{cache=items||[];render();});
-
-    function render(){
-      const term=(searchInput.value||'').trim().toUpperCase();
-      const filtered=term?cache.filter(v=>(v.placa||'').toUpperCase().includes(term)):cache;
-      lista.innerHTML='';countEl.textContent=cache.length;
-      filtered.forEach(v=>{
-        const li=document.createElement('li');
-        const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
-        const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):(v.horaTexto||'');
-
-        const left=document.createElement('div');
-        const plate=document.createElement('span');plate.className='plate';plate.textContent=`${emoji} ${v.placa}`;
-        const time=document.createElement('span');time.className='time';time.textContent = hora;
-
-        // —— Badge “EDITADO” si la hora fue modificada ——
-        if (v.entradaEditada) {
-          const badge=document.createElement('span');
-          badge.className='badge-edited';
-          badge.textContent='EDITADO';
-          time.appendChild(badge);
-        }
-
-        left.appendChild(plate);
-        left.appendChild(time);
-        if(v.notas){
-          const n=document.createElement('span');n.className='note';n.textContent=v.notas;left.appendChild(n);
-        }
-
-        const del=document.createElement('button');del.className='delete-btn';del.textContent='SALIDA';del.addEventListener('click',()=>openExitModal(v));
-        li.appendChild(left);li.appendChild(del);lista.appendChild(li);
-      });
-
-      // datalist
-      const dl=document.getElementById('placaSuggestions');
-      dl.innerHTML='';
-      [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
-        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
-      });
+      if (firebaseId) {
+        await writeSalida(o.meta || {}, firebaseId);
+        await remove(ref(db, `estacionados/${firebaseId}`));
+        if (o.localId) idMapDeleteLocal(o.localId);
+      } else {
+        remaining.push(o);
+      }
+    } catch (e) {
+      console.warn("Error procesando salida pendiente", o, e);
+      remaining.push(o);
     }
+  }
+  LS.set(KEYS.PENDING_SALIDAS, remaining);
+}
 
-    function formatHM(totalMin){const h=Math.floor(totalMin/60);const m=totalMin%60;if(h<=0)return`${m} min`;if(m<=0)return`${h} h`;return`${h} h ${m} min`;}
+// ---------- Arranque ----------
+if (isOnline()) {
+  processQueues();
+}
 
-    function openExitModal(item){
-      currentItem=item;
-      const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
-      const salida=new Date();
-      const min=Math.max(1,Math.ceil((salida-entrada)/60000));
-      const TARIFAS={auto:1800,camioneta:2000,moto:1300};
-      const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
-      let total=tarifaHora;
-      const restantes=Math.max(0,min-60);
-      const bloques30=Math.ceil(restantes/30);
-      total+=bloques30*(tarifaHora/2);
-      cobro=Math.round(total);
-      exitMeta={
-        placa:item.placa,
-        tipo:item.tipo,
-        notas:item.notas||"",
-        entradaISO:item.entradaISO||entrada.toISOString(),
-        salidaISO:salida.toISOString(),
-        totalMin:min,
-        totalCobrado:cobro,
-        duracionTexto:formatHM(min)
-      };
-      exitTitle.textContent=item.placa.toUpperCase();
-      exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
-      exitAmount.textContent=`$${cobro}`;
-      paymentInput.value='';changeOutput.textContent='Vuelto: $0';exitModal.style.display='flex';
-    }
+// ---------- Debug helpers ----------
+window.firebase = { app, db };
+window.firebaseDebug = {
+  queues() {
+    return {
+      entradas: LS.get(KEYS.PENDING_ENTRADAS, []),
+      salidas:  LS.get(KEYS.PENDING_SALIDAS, []),
+      map:      LS.get(KEYS.IDMAP, {})
+    };
+  },
+  async forceProcess() { await processQueues(); console.log("✔ Reproceso manual de colas"); }
+};
 
-    paymentInput.addEventListener('input',()=>{const pago=parseFloat(paymentInput.value)||0;const vuelto=pago-cobro;changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;});
-    confirmButton.addEventListener('click',async()=>{if(!currentItem)return;await removeEstacionado(currentItem.id,exitMeta);exitModal.style.display='none';toast('Salida confirmada');currentItem=null;exitMeta=null;});
-    closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
-  </script>
-</body>
-</html>
+export { app, db };
