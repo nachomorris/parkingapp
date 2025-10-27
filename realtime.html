@@ -28,13 +28,45 @@
       padding: 15px;
       background: #3498db;
       border-bottom: 2px solid #2980b9;
-      text-align: center;
     }
-    header .title {
-      font-size: 1.4rem;
+    /* Barra interna: título + botón */
+    .header-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .title {
+      font-size: 1.2rem;  /* un poco más chico para que entre cómodo con el botón */
       font-weight: 700;
       color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
+    /* Botón pequeño y estético */
+    .refresh-btn{
+      background: rgba(255,255,255,0.15);
+      color:#fff;
+      border:1px solid rgba(255,255,255,0.35);
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      line-height: 1;
+      border-radius: 999px;
+      cursor:pointer;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      transition: transform .15s ease, background .2s ease, border-color .2s ease;
+      display:flex; align-items:center; gap:6px;
+    }
+    .refresh-btn:hover{
+      background: rgba(255,255,255,0.25);
+      border-color: rgba(255,255,255,0.6);
+      transform: translateY(-1px);
+    }
+    .refresh-btn:active{ transform: translateY(0); }
+    .refresh-btn .icon{ font-size: 0.95rem; }
+
     .summary {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -50,9 +82,8 @@
       font-size: 1.3rem;
       color: #2c3e50;
     }
-    .summary-left span, .summary-right span {
-      font-weight: 700;
-    }
+    .summary-left span, .summary-right span { font-weight: 700; }
+
     .search {
       padding: 10px 15px;
       background: #f8f9fa;
@@ -67,10 +98,7 @@
       border-radius: 8px;
       font-size: 14px;
     }
-    .search input:focus {
-      border-color: #3498db;
-      outline: none;
-    }
+    .search input:focus { border-color: #3498db; outline: none; }
     .search button {
       padding: 10px 16px;
       background: #95a5a6;
@@ -81,11 +109,10 @@
       font-weight: 700;
       transition: background 0.3s;
     }
-    .search button:hover {
-      background: #7f8c8d;
-    }
+    .search button:hover { background: #7f8c8d; }
     .search .clear-btn { display: none; }
     .search.active .clear-btn { display: inline-block; }
+
     .table-wrap {
       max-height: 60vh;
       overflow: auto;
@@ -107,7 +134,7 @@
     }
     tbody tr:hover { background: #f9f9f9; }
 
-    /* Nuevo badge para horario editado */
+    /* Badge azul “EDITADO” */
     .badge-edited {
       background: #007bff;
       color: white;
@@ -122,21 +149,32 @@
     @media (max-width: 600px) {
       .summary { grid-template-columns: 1fr; gap: 5px; }
       .summary-left, .summary-right { padding: 8px; font-size: 1.1rem; }
+      .title { font-size: 1.1rem; }
     }
     @media (min-width: 768px) { .container { max-width: 600px; } }
   </style>
 </head>
 <body>
   <div class="container">
-    <header><div class="title">Monitor en Tiempo Real</div></header>
+    <header>
+      <div class="header-bar">
+        <div class="title">Monitor en Tiempo Real</div>
+        <button class="refresh-btn" id="refreshBtn" title="Actualizar">
+          <span class="icon">⟳</span> Actualizar
+        </button>
+      </div>
+    </header>
+
     <div class="summary">
       <div class="summary-left">Salidas del día: <span id="count">0</span></div>
       <div class="summary-right">Recaudación: <span id="revenue">$0</span></div>
     </div>
+
     <div class="search">
       <input type="text" id="searchInput" placeholder="Buscar por patente..." />
       <button class="clear-btn" id="clearFilterBtn">Borrar filtro</button>
     </div>
+
     <div class="table-wrap">
       <table>
         <thead>
@@ -156,6 +194,11 @@
   <script type="module">
     import { db } from './firebase.js';
     import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+    // Recargar página
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      location.reload();
+    });
 
     const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
     let salidas = [];
