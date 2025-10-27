@@ -6,11 +6,7 @@
   <title>Monitor en Tiempo Real</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Roboto', sans-serif;
       background: #ecf0f1;
@@ -22,7 +18,7 @@
     }
     .container {
       width: 100%;
-      max-width: 400px; /* Ancho máximo para móviles */
+      max-width: 400px;
       background: #ffffff;
       border-radius: 15px;
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -45,19 +41,17 @@
       gap: 10px;
       padding: 15px;
     }
-    .summary-left,
-    .summary-right {
-      background: #e8f0f2; /* Fondo contrastante */
-      border: 2px solid #3498db; /* Borde destacado */
+    .summary-left, .summary-right {
+      background: #e8f0f2;
+      border: 2px solid #3498db;
       border-radius: 8px;
       padding: 10px;
       text-align: center;
-      font-size: 1.3rem; /* Fuente más grande */
+      font-size: 1.3rem;
       color: #2c3e50;
     }
-    .summary-left span,
-    .summary-right span {
-      font-weight: 700; /* Texto en negrita */
+    .summary-left span, .summary-right span {
+      font-weight: 700;
     }
     .search {
       padding: 10px 15px;
@@ -79,7 +73,7 @@
     }
     .search button {
       padding: 10px 16px;
-      background: #95a5a6; /* Gris neutro */
+      background: #95a5a6;
       color: #ffffff;
       border: none;
       border-radius: 8px;
@@ -88,23 +82,16 @@
       transition: background 0.3s;
     }
     .search button:hover {
-      background: #7f8c8d; /* Gris más oscuro al pasar el ratón */
+      background: #7f8c8d;
     }
-    .search .clear-btn {
-      display: none;
-    }
-    .search.active .clear-btn {
-      display: inline-block;
-    }
+    .search .clear-btn { display: none; }
+    .search.active .clear-btn { display: inline-block; }
     .table-wrap {
       max-height: 60vh;
       overflow: auto;
       padding: 10px;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    table { width: 100%; border-collapse: collapse; }
     thead th {
       background: #3498db;
       color: #ffffff;
@@ -118,40 +105,33 @@
       font-size: 0.95rem;
       color: #2c3e50;
     }
-    tbody tr:hover {
-      background: #f9f9f9;
+    tbody tr:hover { background: #f9f9f9; }
+
+    /* Nuevo badge para horario editado */
+    .badge-edited {
+      background: #007bff;
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 6px;
+      vertical-align: middle;
     }
-    /* Responsive */
+
     @media (max-width: 600px) {
-      .summary {
-        grid-template-columns: 1fr; /* Apila los recuadros en móviles */
-        gap: 5px;
-      }
-      .summary-left,
-      .summary-right {
-        padding: 8px;
-        font-size: 1.1rem; /* Fuente un poco más pequeña en móviles */
-      }
+      .summary { grid-template-columns: 1fr; gap: 5px; }
+      .summary-left, .summary-right { padding: 8px; font-size: 1.1rem; }
     }
-    @media (min-width: 768px) {
-      .container {
-        max-width: 600px;
-      }
-    }
+    @media (min-width: 768px) { .container { max-width: 600px; } }
   </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <div class="title">Monitor en Tiempo Real</div>
-    </header>
+    <header><div class="title">Monitor en Tiempo Real</div></header>
     <div class="summary">
-      <div class="summary-left">
-        Salidas del día: <span id="count">0</span>
-      </div>
-      <div class="summary-right">
-        Recaudación: <span id="revenue">$0</span>
-      </div>
+      <div class="summary-left">Salidas del día: <span id="count">0</span></div>
+      <div class="summary-right">Recaudación: <span id="revenue">$0</span></div>
     </div>
     <div class="search">
       <input type="text" id="searchInput" placeholder="Buscar por patente..." />
@@ -172,31 +152,24 @@
       </table>
     </div>
   </div>
-  <!-- Firebase -->
+
   <script type="module">
     import { db } from './firebase.js';
     import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-    // ====== Configuración de tarifas ======
     const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
-    // ====== Estado ======
     let salidas = [];
     let searchTerm = '';
 
-    // ====== Utilidades ======
     const $ = (id) => document.getElementById(id);
-    function parseISO(s) {
-      try { return new Date(s); } catch { return null; }
-    }
-    function getHour(time) {
-      return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    function formatHM(totalMin) {
+    const parseISO = (s) => { try { return new Date(s); } catch { return null; } };
+    const getHour = (time) => time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatHM = (totalMin) => {
       const h = Math.floor(totalMin / 60), m = totalMin % 60;
       if (h && m) return `${h} h ${m} min`;
       if (h) return `${h} h`;
       return `${m} min`;
-    }
+    };
     function computeCharge(item) {
       if (typeof item.totalCobrado === 'number') return item.totalCobrado;
       const tarifa = TARIFAS[item.tipo] ?? TARIFAS.auto;
@@ -210,11 +183,10 @@
       return Math.round(total);
     }
 
-    // ====== Cargar datos desde Firebase ======
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Inicio del día
+    today.setHours(0, 0, 0, 0);
     const todayEnd = new Date(today);
-    todayEnd.setHours(23, 59, 59, 999); // Fin del día
+    todayEnd.setHours(23, 59, 59, 999);
 
     onValue(ref(db, 'salidas'), (snap) => {
       const val = snap.val() || {};
@@ -223,52 +195,53 @@
           const salida = parseISO(x.salidaISO);
           return salida && salida >= today && salida <= todayEnd;
         })
-        .sort((a, b) => parseISO(b.salidaISO) - parseISO(a.salidaISO)); // Orden descendente por salida
+        .sort((a, b) => parseISO(b.salidaISO) - parseISO(a.salidaISO));
       applyFilter();
     });
 
-    // ====== Filtro por patente ======
     const searchInput = $('searchInput');
     const clearBtn = $('clearFilterBtn');
     searchInput.addEventListener('input', () => {
       searchTerm = searchInput.value.trim().toUpperCase();
-      const searchDiv = document.querySelector('.search');
-      searchDiv.classList.toggle('active', searchTerm.length > 0);
+      document.querySelector('.search').classList.toggle('active', searchTerm.length > 0);
       applyFilter();
     });
     clearBtn.addEventListener('click', () => {
       searchInput.value = '';
-      const searchDiv = document.querySelector('.search');
-      searchDiv.classList.remove('active');
+      document.querySelector('.search').classList.remove('active');
       applyFilter();
     });
 
     function applyFilter() {
-      const filteredSalidas = searchTerm
+      const filtered = searchTerm
         ? salidas.filter(x => (x.placa || '').toUpperCase().includes(searchTerm))
         : salidas;
-      render(filteredSalidas);
+      render(filtered);
     }
 
-    // ====== Renderizar tabla ======
-    function render(filteredSalidas) {
+    function render(filtered) {
       const table = $('realtimeTable');
       const countEl = $('count');
       const revenueEl = $('revenue');
       table.innerHTML = '';
-      countEl.textContent = filteredSalidas.length;
-      const totalRevenue = filteredSalidas.reduce((sum, x) => sum + computeCharge(x), 0);
+      countEl.textContent = filtered.length;
+      const totalRevenue = filtered.reduce((sum, x) => sum + computeCharge(x), 0);
       revenueEl.textContent = `$${totalRevenue.toLocaleString('es-AR')}`;
-      filteredSalidas.forEach(x => {
+
+      filtered.forEach(x => {
         const tr = document.createElement('tr');
         const entrada = parseISO(x.entradaISO);
         const salida = parseISO(x.salidaISO);
         const durMin = salida && entrada ? Math.max(1, Math.ceil((salida - entrada) / 60000)) : 0;
         const durTxt = formatHM(durMin);
         const cobro = computeCharge(x);
+
+        const isEdited = x.edited === true || x.entradaEditada === true;
+        const badge = isEdited ? `<span class="badge-edited">EDITADO</span>` : '';
+
         tr.innerHTML = `
           <td>${x.placa || 'Sin patente'}</td>
-          <td>${entrada ? getHour(entrada) : '--:--'}</td>
+          <td>${entrada ? getHour(entrada) : '--:--'} ${badge}</td>
           <td>${salida ? getHour(salida) : '--:--'}</td>
           <td>${durTxt}</td>
           <td>$${cobro.toLocaleString('es-AR')}</td>
