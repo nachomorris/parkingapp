@@ -183,6 +183,20 @@
     }
     .btn:hover { background: #c0392b; }
 
+    /* Botón ícono (🗑️) */
+    .icon-btn {
+      appearance: none;
+      border: 1px solid #ecf0f1;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: #f5f7f9; }
+    .icon-btn:disabled { opacity: .6; cursor: not-allowed; }
+
     /* Responsive */
     @media (max-width: 960px) {
       .kpis { grid-template-columns: 1fr; }
@@ -244,6 +258,7 @@
                 <th>Salida</th>
                 <th>Duración</th>
                 <th>Cobrado</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="tbody"></tbody>
@@ -267,7 +282,7 @@
   <!-- Firebase -->
   <script type="module">
     import { db } from './firebase.js';
-    import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+    import { ref, onValue, remove } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
     const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
 
@@ -325,11 +340,12 @@
 
     onValue(ref(db, 'salidas'), (snap)=>{
       const val = snap.val() || {};
-      all = Object.values(val).map(x => ({
+      // >>> Preservamos la key de Firebase en _id
+      all = Object.entries(val).map(([id, x]) => ({
         ...x,
+        _id: id,
         placa: (x.placa||'').toUpperCase(),
         tipo: (x.tipo||'auto'),
-        // normalizo flag por si viene en cualquiera de los dos nombres
         edited: isEdited(x)
       })).sort((a,b)=>{
         const aa = parseISO(a.salidaISO) || parseISO(a.entradaISO) || 0;
@@ -402,6 +418,11 @@
           <td>${salida ? salida.toLocaleString([], { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' }) : ''}</td>
           <td>${durTxt}</td>
           <td>${fmtMoney(cobro)}</td>
+          <td>
+            <button class="icon-btn del-btn" data-id="${x._id}" title="Borrar esta salida" aria-label="Borrar">
+              🗑️
+            </button>
+          </td>
         `;
         tb.appendChild(tr);
       });
@@ -456,7 +477,30 @@
       });
     }
 
-    // Exportar CSV (mismo layout, sin columna de “Editado” para no romper flujos)
+    // Delegación de eventos para borrar
+    $('tbody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.del-btn');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      if (!id) return;
+
+      const row = btn.closest('tr');
+      const placa = row?.children?.[0]?.textContent?.trim() || '';
+      const ok = confirm(`¿Borrar la salida "${placa}"?\nEsta acción no se puede deshacer.`);
+      if (!ok) return;
+
+      btn.disabled = true;
+      try {
+        await remove(ref(db, `salidas/${id}`));
+        // onValue actualizará la tabla automáticamente
+      } catch (err) {
+        alert('No se pudo borrar. Ver consola para más info.');
+        console.error('Error al borrar', id, err);
+        btn.disabled = false;
+      }
+    });
+
+    // Exportar CSV (mismo layout)
     function toCsv(rows){
       return rows.map(r => r.map(v => {
         const s = String(v ?? '');
