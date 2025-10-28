@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestor de Estacionamiento</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
+    body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
+    .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
+    .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
+    .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
+    h2{color:#333;margin:0 0 10px 0;font-size:1.3em;text-transform:uppercase}
+    .ingreso{display:flex;flex-direction:column;gap:10px}
+    .ingreso input#placa{font-size:1.1em;padding:10px}
+    .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
+    /* Hora + botón editar alineados */
+    .time-row{display:flex;align-items:center;gap:8px}
+    .time-row input{flex:1}
+    .edit-hour-btn{
+      width:44px;height:44px;min-width:44px;
+      background:#4a90e2;color:#fff;border:none;border-radius:8px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;cursor:pointer;
+    }
+    .edit-hour-btn:hover{background:#357abd}
+    input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
+    input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
+    button{width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.2em}
+    button:hover{background:#357abd}
+    .vehicle-btn{flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:20px;text-align:center;background:transparent;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 4px}
+    .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 4px 8px rgba(0,0,0,.2)}
+    .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
+    .delete-btn:hover{background:#c0392b}
+    .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
+    .clear-filter-btn.active{display:block}
+    ul{list-style:none;padding-bottom:60px;}
+    li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
+    .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
+    .time{font-size:.85em;color:#555;margin-top:4px;display:flex;align-items:center;gap:6px}
+    .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
+    /* Badge EDITADO */
+    .edited-badge{
+      display:inline-block;
+      font-size:.68em;
+      font-weight:700;
+      color:#1161c2;
+      background:#e6f0ff;
+      border:1px solid #bcd7ff;
+      padding:2px 6px;
+      border-radius:6px;
+      letter-spacing:.02em;
+    }
+    .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
+    .modal-content{background:#fff;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
+    .modal-content h3{font-size:1.8em;margin-bottom:10px;text-transform:uppercase}
+    .modal-content p{margin-bottom:10px;font-size:1em}
+    .modal-content .amount{font-size:1.8em;font-weight:700;margin-bottom:10px}
+    .modal-content input{width:100%;padding:8px;margin-bottom:10px;font-size:1em}
+    .modal-content .change{font-weight:700;margin-bottom:10px;font-size:1em}
+    .modal-content button{padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.1em}
+    .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
+    .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
+    .toast.show{visibility:visible;animation:fadeInOut 2s}
+    @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
+
+    /* SECCIÓN DE SALIDAS DEL DÍA */
+    .salidas-dia{margin-top:20px}
+    .salidas-dia h2{font-size:1.1em;color:#e74c3c;margin-bottom:10px}
+    .salidas-dia .table-wrap{max-height:250px;overflow:auto;margin-top:10px}
+    .salidas-dia table{font-size:0.9rem;width:100%;border-collapse:collapse}
+    .salidas-dia thead{background:#f8f9fa;position:sticky;top:0;z-index:1}
+    .salidas-dia th,.salidas-dia td{padding:8px;text-align:left;border-bottom:1px solid #eee}
+    .salidas-dia td:last-child{text-align:right;font-weight:700}
+    .salidas-dia tr:hover{background:#f9f9f9}
+    .salidas-dia .total-recaudado{
+      margin-top:10px;padding:10px;background:#e8f5e9;border:2px solid #27ae60;border-radius:8px;text-align:center;font-size:1.1rem;color:#27ae60;font-weight:700
+    }
+  </style>
+  <script type="module" src="./firebase.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="form-section">
+      <section class="ingreso">
+        <h2>INGRESO DE VEHÍCULO</h2>
+        <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off" />
+        <div class="time-row">
+          <input type="text" id="entryTime" value="" readonly />
+          <button id="editHourBtn" class="edit-hour-btn" title="Editar hora">✎</button>
+        </div>
+        <datalist id="placaSuggestions"></datalist>
+        <input type="text" id="notas" placeholder="Notas" />
+        <div class="vehicle-buttons">
+          <button id="autoBtn" class="vehicle-btn active" data-tipo="auto">Carro</button>
+          <button id="camionetaBtn" class="vehicle-btn" data-tipo="camioneta">Camioneta</button>
+          <button id="motoBtn" class="vehicle-btn" data-tipo="moto">Moto</button>
+        </div>
+        <button id="btn-entrada">ENTRADA</button>
+      </section>
+    </div>
+    <div class="list-section">
+      <h2>ESTACIONADOS: <span id="count">0</span></h2>
+      <input type="text" id="searchInput" placeholder="BUSCAR PATENTE" />
+      <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
+      <ul id="listaEstacionados"></ul>
+
+      <!-- SECCIÓN DE SALIDAS DEL DÍA -->
+      <div class="salidas-dia">
+        <h2>SALIDAS DEL DÍA: <span id="salidasCount">0</span></h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Patente</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Dur.</th>
+                <th>Cobrado</th>
+              </tr>
+            </thead>
+            <tbody id="salidasTable"></tbody>
+          </table>
+        </div>
+        <div class="total-recaudado">
+          Recaudación del día: <span id="totalRecaudado">$0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de salida -->
+  <div id="exitModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal" id="closeModal">&times;</span>
+      <h3 id="exitTitle"></h3>
+      <p id="exitInfo"></p>
+      <p class="amount" id="exitAmount"></p>
+      <input type="number" id="paymentInput" placeholder="Monto pagado ($)" />
+      <p class="change" id="changeOutput">Vuelto: $0</p>
+      <button id="confirmButton">Confirmar</button>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
+    const inputPatente = document.getElementById('placa');
+    const inputNotas = document.getElementById('notas');
+    const inputHora = document.getElementById('entryTime');
+    const editHourBtn = document.getElementById('editHourBtn');
+    const btnEntrada = document.getElementById('btn-entrada');
+    const lista = document.getElementById('listaEstacionados');
+    const countEl = document.getElementById('count');
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearFilterBtn');
+    const exitModal = document.getElementById('exitModal');
+    const closeModal = document.getElementById('closeModal');
+    const exitTitle = document.getElementById('exitTitle');
+    const exitInfo = document.getElementById('exitInfo');
+    const exitAmount = document.getElementById('exitAmount');
+    const paymentInput = document.getElementById('paymentInput');
+    const changeOutput = document.getElementById('changeOutput');
+    const confirmButton = document.getElementById('confirmButton');
+    let tipoSeleccionado = 'auto';
+    let currentItem = null;
+    let cobro = 0;
+    let exitMeta = null;
+    let horaEditada = false;
+    const autoBtn = document.getElementById('autoBtn');
+    const camionetaBtn = document.getElementById('camionetaBtn');
+    const motoBtn = document.getElementById('motoBtn');
+    document.querySelectorAll('[data-tipo]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
+        btn.classList.add('active');
+        tipoSeleccionado = btn.dataset.tipo;
+      });
+    });
+    function nowHHMM(){
+      const d=new Date();
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+    }
+    function updateEntryTime(){
+      if (!horaEditada) inputHora.value = nowHHMM();
+    }
+    updateEntryTime(); setInterval(updateEntryTime,60000);
+    function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',1800);}
+    function toggleClearBtn(){const hasText=(searchInput.value||'').trim().length>0;clearBtn.classList.toggle('active',hasText);}
+    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
+    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
+    toggleClearBtn();
+    editHourBtn.addEventListener('click', ()=>{
+      inputHora.readOnly = false;
+      horaEditada = true;
+      const v = inputHora.value;
+      requestAnimationFrame(()=>{
+        inputHora.focus();
+        const len = v.length;
+        if (inputHora.setSelectionRange) inputHora.setSelectionRange(len, len);
+      });
+    });
+    function isoTodayFromHHMM(hhmm){
+      const [h,m] = (hhmm||'').split(':').map(x=>parseInt(x,10));
+      const d = new Date();
+      if (!isNaN(h)) d.setHours(h);
+      if (!isNaN(m)) d.setMinutes(m);
+      d.setSeconds(0); d.setMilliseconds(0);
+      return d.toISOString();
+    }
+    btnEntrada.addEventListener('click',async(e)=>{
+      e.preventDefault();
+      const placa=(inputPatente.value||'').trim().toUpperCase();
+      if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
+      let entradaISO, horaTexto;
+      if (horaEditada){
+        horaTexto = inputHora.value;
+        entradaISO = isoTodayFromHHMM(horaTexto);
+      }else{
+        const d = new Date();
+        entradaISO = d.toISOString();
+        horaTexto = nowHHMM();
+      }
+      await addEntrada({
+        placa,
+        tipo: tipoSeleccionado,
+        notas: inputNotas.value || '',
+        entradaISO,
+        horaTexto,
+        edited: !!horaEditada
+      });
+      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
+      tipoSeleccionado='auto';
+      autoBtn.classList.add('active'); camionetaBtn.classList.remove('active'); motoBtn.classList.remove('active');
+      inputHora.readOnly = true;
+      horaEditada = false;
+      updateEntryTime();
+      toast('Vehículo ingresado');
+    });
+    inputPatente.addEventListener('keypress',e=>{if(e.key==='Enter'){e.preventDefault();btnEntrada.click();}});
+    let cache=[];
+    onEstacionados(items=>{cache=items||[];render();});
+    function render(){
+      const term=(searchInput.value||'').trim().toUpperCase();
+      const filtered=term?cache.filter(v=>(v.placa||'').toUpperCase().includes(term)):cache;
+      lista.innerHTML='';countEl.textContent=cache.length;
+      filtered.forEach(v=>{
+        const li=document.createElement('li');
+        const emoji=v.tipo==='camioneta'?'Camioneta':(v.tipo==='moto'?'Moto':'Carro');
+        const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):(v.horaTexto||'');
+        const left=document.createElement('div');
+        const plate=document.createElement('span');
+        plate.className='plate';
+        plate.textContent=`${emoji} ${v.placa}`;
+        const timeWrap=document.createElement('span');
+        timeWrap.className='time';
+        timeWrap.innerHTML = `${hora}${v.edited ? ' <span class="edited-badge">EDITADO</span>' : ''}`;
+        left.appendChild(plate);
+        left.appendChild(timeWrap);
+        if(v.notas){
+          const n=document.createElement('span');
+          n.className='note';
+          n.textContent=v.notas;
+          left.appendChild(n);
+        }
+        const del=document.createElement('button');
+        del.className='delete-btn';
+        del.textContent='SALIDA';
+        del.addEventListener('click',()=>openExitModal(v));
+        li.appendChild(left);
+        li.appendChild(del);
+        lista.appendChild(li);
+      });
+      const dl=document.getElementById('placaSuggestions');
+      dl.innerHTML='';
+      [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
+        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
+      });
+    }
+    function formatHM(totalMin){const h=Math.floor(totalMin/60);const m=totalMin%60;if(h<=0)return`${m} min`;if(m<=0)return`${h} h`;return`${h} h ${m} min`;}
+    function openExitModal(item){
+      currentItem=item;
+      const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
+      const salida=new Date();
+      const min=Math.max(1,Math.ceil((salida-entrada)/60000));
+      const TARIFAS={auto:1800,camioneta:2000,moto:1300};
+      const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
+      let total=tarifaHora;
+      const restantes=Math.max(0,min-60);
+      const bloques30=Math.ceil(restantes/30);
+      total+=bloques30*(tarifaHora/2);
+      cobro=Math.round(total);
+      exitMeta={
+        placa:item.placa,
+        tipo:item.tipo,
+        notas:item.notas||"",
+        entradaISO:item.entradaISO||entrada.toISOString(),
+        salidaISO:salida.toISOString(),
+        totalMin:min,
+        totalCobrado:cobro,
+        duracionTexto:formatHM(min),
+        edited: (item.edited === true) || (item.entradaEditada === true)
+      };
+      exitTitle.textContent=item.placa.toUpperCase();
+      exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
+      exitAmount.textContent=`$${cobro}`;
+      paymentInput.value='';
+      changeOutput.textContent='Vuelto: $0';
+      exitModal.style.display='flex';
+    }
+    paymentInput.addEventListener('input',()=>{
+      const pago=parseFloat(paymentInput.value)||0;
+      const vuelto=pago-cobro;
+      changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;
+    });
+    confirmButton.addEventListener('click',async()=>{
+      if(!currentItem)return;
+      await removeEstacionado(currentItem.id, exitMeta);
+      exitModal.style.display='none';
+      toast('Salida confirmada');
+      currentItem=null;
+      exitMeta=null;
+    });
+    closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
+
+    // ====== SALIDAS DEL DÍA (nuevo) ======
+    let salidasDia = [];
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    onValue(ref(db, 'salidas'), (snap) => {
+      const val = snap.val() || {};
+      salidasDia = Object.values(val)
+        .filter(x => {
+          const salida = parseISO(x.salidaISO);
+          return salida && salida >= todayStart && salida <= todayEnd;
+        })
+        .sort((a, b) => parseISO(b.salidaISO) - parseISO(a.salidaISO));
+      renderSalidas();
+    });
+
+    function renderSalidas() {
+      const table = $('salidasTable');
+      const count = $('salidasCount');
+      const totalEl = $('totalRecaudado');
+      table.innerHTML = '';
+      count.textContent = salidasDia.length;
+
+      const totalRecaudado = salidasDia.reduce((sum, x) => sum + (x.totalCobrado || computeCharge(x)), 0);
+      totalEl.textContent = `$${totalRecaudado.toLocaleString('es-AR')}`;
+
+      salidasDia.forEach(x => {
+        const entrada = parseISO(x.entradaISO);
+        const salida = parseISO(x.salidaISO);
+        const durMin = salida && entrada ? Math.max(1, Math.ceil((salida - entrada) / 60000)) : 0;
+        const durTxt = formatHM(durMin);
+        const cobro = x.totalCobrado || computeCharge(x);
+
+        const tr = document.createElement('tr');
+        tr.style.background = x.edited ? '#fff8e1' : '#ffffff';
+        tr.innerHTML = `
+          <td style="padding: 8px;">${x.placa || ''}</td>
+          <td style="padding: 8px;">${entrada ? getHour(entrada) : '--:--'}</td>
+          <td style="padding: 8px;">${salida ? getHour(salida) : '--:--'}</td>
+          <td style="padding: 8px;">${durTxt}</td>
+          <td style="padding: 8px; text-align: right; font-weight: 700;">$${cobro.toLocaleString('es-AR')}</td>
+        `;
+        table.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
