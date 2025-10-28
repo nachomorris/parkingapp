@@ -1,500 +1,237 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestor de Estacionamiento</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
-
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Estadísticas — Horarios Populares</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;transition:all .3s ease}
-    body{background:#f5f5f5;color:#333;min-height:100vh;padding:10px;position:relative}
-    .container{display:flex;max-width:1000px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;box-shadow:0 2px 5px rgba(0,0,0,.1);position:relative;z-index:1}
-    .form-section{width:40%;padding:15px;background:#f9f9f9;border-radius:8px 0 0 8px}
-    .list-section{width:60%;padding:15px;background:#fff;border-radius:0 8px 8px 0}
-    h2{color:#333;margin:0 0 10px 0;font-size:1.3em;text-transform:uppercase}
+    *{box-sizing:border-box} body{font-family:Roboto,system-ui,-apple-system,sans-serif;background:#f5f7fa;color:#223; margin:0; padding:12px}
+    .wrap{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #e6eaf0;border-radius:16px;box-shadow:0 8px 24px rgba(18,33,61,.06);overflow:hidden}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #eef2f7;background:#fafcff}
+    h1{font-size:1.25rem;margin:0}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    select,button{padding:8px 10px;border:1px solid #d7dde3;border-radius:10px;background:#fff;font-weight:700;color:#415466;cursor:pointer}
+    .badge-live{display:inline-block;background:#e83f3f;color:#fff;font-weight:800;letter-spacing:.02em;padding:4px 8px;border-radius:8px;margin-right:8px;font-size:.8rem}
+    .muted{color:#6c7a8a;font-weight:700}
+    main{padding:16px 18px}
 
-    /* Pill contador en títulos */
-    .h-count{
-      display:inline-block;
-      margin-left:8px;
-      padding:2px 8px;
-      font-size:.8em;
-      font-weight:700;
-      color:#0f54b3;
-      background:#e6f0ff;
-      border:1px solid #bcd7ff;
-      border-radius:999px;
-    }
+    /* Chart */
+    .chart{display:grid;grid-template-columns:repeat(24,1fr);gap:6px;align-items:end;height:220px;padding:18px 8px 10px;border-bottom:1px dashed #e6eaf0}
+    .bar{position:relative;background:#5b8aa6;border-radius:8px 8px 0 0;height:0;transition:height .4s}
+    .bar.live{outline:2px solid #f16363; background:#c65c5c}
+    .bar:hover::after{content:attr(data-tip);position:absolute;left:50%;transform:translateX(-50%);bottom:100%;margin-bottom:8px;background:#1f2a36;color:#fff;padding:6px 8px;border-radius:6px;font-size:.75rem;white-space:nowrap}
+    .xlabels{display:grid;grid-template-columns:repeat(24,1fr);gap:6px;margin-top:8px;font-size:.78rem;color:#6c7a8a}
+    .xlabels span{justify-self:center}
 
-    .ingreso{display:flex;flex-direction:column;gap:10px}
-    .ingreso input#placa{font-size:1.1em;padding:10px}
-    .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
+    /* KPIs */
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+    .kpi{border:1px solid #eef2f7;border-left:4px solid #2f7ad6;border-radius:12px;background:#fbfdff;padding:12px}
+    .kpi h4{margin:0 0 6px 0;color:#6c7a8a;font-size:.85rem;text-transform:uppercase;letter-spacing:.02em}
+    .kpi .v{font-weight:800;font-size:1.25rem;color:#1f2a36}
 
-    /* Hora + botón editar alineados */
-    .time-row{display:flex;align-items:center;gap:8px}
-    .time-row input{flex:1}
-    .edit-hour-btn{
-      width:44px;height:44px;min-width:44px;
-      background:#4a90e2;color:#fff;border:none;border-radius:8px;
-      display:flex;align-items:center;justify-content:center;
-      font-size:18px;cursor:pointer;
-    }
-    .edit-hour-btn:hover{background:#357abd}
+    footer{padding:14px 18px;color:#6c7a8a;font-size:.85rem}
 
-    input{width:100%;padding:8px;margin-bottom:8px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#333;font-size:14px}
-    input:focus{outline:none;border-color:#4a90e2;box-shadow:0 0 5px rgba(74,144,226,.5)}
-
-    button{width:100%;padding:12px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.2em}
-    button:hover{background:#357abd}
-
-    .vehicle-btn{flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:20px;text-align:center;background:transparent;box-shadow:0 1px 2px rgba(0,0,0,.1);margin:0 4px}
-    .vehicle-btn.active{border:3px solid #4a90e2;box-shadow:0 4px 8px rgba(0,0,0,.2)}
-
-    .delete-btn{width:auto;padding:6px 12px;background:#e74c3c;border-radius:8px;font-size:16px;align-self:center;text-transform:uppercase}
-    .delete-btn:hover{background:#c0392b}
-
-    .clear-filter-btn{width:100%;padding:8px;background:#e67e22;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:none}
-    .clear-filter-btn.active{display:block}
-
-    ul{list-style:none;padding-bottom:60px;}
-    li{display:flex;justify-content:space-between;padding:8px;margin-bottom:8px;background:#f9f9f9;border:1px solid #ddd;border-left:4px solid #4a90e2;border-radius:8px;align-items:center}
-
-    .plate{font-size:1.5em;font-weight:700;color:#333;display:flex;align-items:center;gap:4px}
-    .time{font-size:.85em;color:#555;margin-top:4px;display:flex;align-items:center;gap:6px}
-    .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
-
-    /* Badge EDITADO */
-    .edited-badge{
-      display:inline-block;
-      font-size:.68em;
-      font-weight:700;
-      color:#1161c2;
-      background:#e6f0ff;
-      border:1px solid #bcd7ff;
-      padding:2px 6px;
-      border-radius:6px;
-      letter-spacing:.02em;
-    }
-
-    .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
-    .modal-content{background:#fff;margin:5% auto;padding:20px;border:1px solid #888;width:90%;max-width:400px;border-radius:8px;text-align:center;position:relative}
-    .modal-content h3{font-size:1.8em;margin-bottom:10px;text-transform:uppercase}
-    .modal-content p{margin-bottom:10px;font-size:1em}
-    .modal-content .amount{font-size:1.8em;font-weight:700;margin-bottom:10px}
-    .modal-content input{width:100%;padding:8px;margin-bottom:10px;font-size:1em}
-    .modal-content .change{font-weight:700;margin-bottom:10px;font-size:1em}
-    .modal-content button{padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1.1em}
-    .close-modal{position:absolute;top:10px;right:15px;font-size:20px;cursor:pointer;color:#333}
-
-    .toast{visibility:hidden;min-width:200px;background:#333;color:#fff;text-align:center;border-radius:8px;padding:10px;position:fixed;z-index:1002;left:50%;bottom:20px;transform:translateX(-50%);font-size:14px}
-    .toast.show{visibility:visible;animation:fadeInOut 2s}
-    @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
-
-    /* ====== TABS ====== */
-    .tabs{display:flex;gap:8px;margin-bottom:10px}
-    .tab-btn{
-      flex:1;padding:8px 10px;border:1px solid #d7dde3;border-radius:8px;background:#f5f7fa;
-      cursor:pointer;font-weight:700;font-size:13px;color:#415466;display:flex;align-items:center;justify-content:center;gap:8px
-    }
-    .tab-btn.active{background:#e6f0ff;border-color:#bcd7ff;color:#0f54b3;box-shadow:0 1px 3px rgba(0,0,0,.06) inset}
-    .tab-badge{display:inline-block;padding:1px 8px;border-radius:999px;background:#eef1f4;color:#5c6a7a;font-size:12px;font-weight:700}
-    .tab-panel{display:none}
-    .tab-panel.active{display:block}
-
-    /* Estilos lista salidos hoy */
-    .salidos-list li{
-      display:flex;justify-content:space-between;align-items:center;
-      padding:8px 10px;margin-bottom:8px;background:#f7f9fb;border:1px solid #e7edf3;border-radius:8px
-    }
-    .salidos-left{display:flex;flex-direction:column}
-    .salidos-placa{font-weight:700;color:#324253}
-    .salidos-sub{font-size:.8em;color:#617384}
+    @media (max-width:900px){ .chart{grid-template-columns:repeat(12,1fr)} .xlabels{grid-template-columns:repeat(12,1fr)} .h24{display:none} }
   </style>
-
-  <script type="module" src="./firebase.js"></script>
 </head>
 <body>
-  <div class="container">
-    <div class="form-section">
-      <section class="ingreso">
-        <h2>INGRESO DE VEHÍCULO</h2>
+  <div class="wrap">
+    <header>
+      <h1>Horarios de mayor concurrencia</h1>
+      <div class="controls">
+        <label class="muted">Día</label>
+        <select id="daySelect">
+          <option value="0">domingo</option>
+          <option value="1">lunes</option>
+          <option value="2">martes</option>
+          <option value="3">miércoles</option>
+          <option value="4">jueves</option>
+          <option value="5">viernes</option>
+          <option value="6">sábado</option>
+        </select>
+        <label class="muted">Rango</label>
+        <select id="rangeSelect">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+        </select>
+      </div>
+    </header>
 
-        <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off" />
-
-        <!-- Hora + botón alineados -->
-        <div class="time-row">
-          <input type="text" id="entryTime" value="" readonly />
-          <button id="editHourBtn" class="edit-hour-btn" title="Editar hora">✎</button>
-        </div>
-
-        <datalist id="placaSuggestions"></datalist>
-        <input type="text" id="notas" placeholder="Notas" />
-
-        <div class="vehicle-buttons">
-          <button id="autoBtn" class="vehicle-btn active" data-tipo="auto">🚗</button>
-          <button id="camionetaBtn" class="vehicle-btn" data-tipo="camioneta">🚐</button>
-          <button id="motoBtn" class="vehicle-btn" data-tipo="moto">🏍️</button>
-        </div>
-        <button id="btn-entrada">ENTRADA</button>
-      </section>
-    </div>
-
-    <div class="list-section">
-      <!-- Tabs header -->
-      <div class="tabs" role="tablist" aria-label="Cambiar vista">
-        <button id="tab-activos" class="tab-btn active" role="tab" aria-controls="panel-activos" aria-selected="true">
-          🟢 En curso <span class="tab-badge" id="count">0</span>
-        </button>
-        <button id="tab-salidos" class="tab-btn" role="tab" aria-controls="panel-salidos" aria-selected="false">
-          📅 Salidos hoy <span class="tab-badge" id="salidosCount">0</span>
-        </button>
+    <main>
+      <div style="margin-bottom:8px;">
+        <span class="badge-live">EN TIEMPO REAL</span>
+        <span id="liveText" class="muted">Calculando…</span>
       </div>
 
-      <!-- Panel: En curso -->
-      <section id="panel-activos" class="tab-panel active">
-        <h2>ESTACIONADOS <span id="hActivosCount" class="h-count">0</span></h2>
-        <input type="text" id="searchInput" placeholder="BUSCAR PATENTE" />
-        <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
-        <ul id="listaEstacionados"></ul>
+      <div id="chart" class="chart" aria-label="Promedio de ocupación por hora"></div>
+      <div class="xlabels" id="xlabels"></div>
+
+      <section class="kpis">
+        <div class="kpi"><h4>Pico promedio del día</h4><div class="v" id="kpiPeak">–</div></div>
+        <div class="kpi"><h4>Ocupación ahora</h4><div class="v" id="kpiNow">–</div></div>
+        <div class="kpi"><h4>Vehículos hoy</h4><div class="v" id="kpiToday">–</div></div>
       </section>
+    </main>
 
-      <!-- Panel: Salidos hoy -->
-      <section id="panel-salidos" class="tab-panel" aria-label="Vehículos salidos hoy">
-        <h2>VEHÍCULOS SALIDOS HOY <span id="hSalidosHoyCount" class="h-count">0</span></h2>
-        <ul id="listaSalidosHoy" class="salidos-list"></ul>
-      </section>
-    </div>
+    <footer>Basado en entradas y salidas históricas (n = <span id="sampleSize">0</span> días del día seleccionado). Promedio en “vehículos concurrentes”.</footer>
   </div>
-
-  <!-- Modal de salida -->
-  <div id="exitModal" class="modal">
-    <div class="modal-content">
-      <span class="close-modal" id="closeModal">&times;</span>
-      <h3 id="exitTitle"></h3>
-      <p id="exitInfo"></p>
-      <p class="amount" id="exitAmount"></p>
-      <input type="number" id="paymentInput" placeholder="Monto pagado ($)" />
-      <p class="change" id="changeOutput">Vuelto: $0</p>
-      <button id="confirmButton">Confirmar</button>
-    </div>
-  </div>
-
-  <div id="toast" class="toast"></div>
 
   <script type="module">
-    import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
-
-    /* RTDB para /salidas */
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+    /* Firebase */
     import { app } from './firebase.js';
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+    import { onEstacionados } from './firebase.js';
     const db = getDatabase(app);
 
-    /* ====== TABS ====== */
-    const tabActivos = document.getElementById('tab-activos');
-    const tabSalidos = document.getElementById('tab-salidos');
-    const panelActivos = document.getElementById('panel-activos');
-    const panelSalidos = document.getElementById('panel-salidos');
-    function activateTab(which){
-      const isActivos = which === 'activos';
-      tabActivos.classList.toggle('active', isActivos);
-      tabSalidos.classList.toggle('active', !isActivos);
-      tabActivos.setAttribute('aria-selected', String(isActivos));
-      tabSalidos.setAttribute('aria-selected', String(!isActivos));
-      panelActivos.classList.toggle('active', isActivos);
-      panelSalidos.classList.toggle('active', !isActivos);
+    /* UI refs */
+    const daySelect   = document.getElementById('daySelect');
+    const rangeSelect = document.getElementById('rangeSelect');
+    const chartEl     = document.getElementById('chart');
+    const xlabelsEl   = document.getElementById('xlabels');
+    const liveText    = document.getElementById('liveText');
+    const kpiPeak     = document.getElementById('kpiPeak');
+    const kpiNow      = document.getElementById('kpiNow');
+    const kpiToday    = document.getElementById('kpiToday');
+    const sampleSize  = document.getElementById('sampleSize');
+
+    /* Helpers */
+    const HRS = Array.from({length:24},(_,h)=>h);
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function labelForHour(h){
+      const ampm = h===0? "12 a. m.": (h<12? h+" a. m.": (h===12? "12 p. m.": (h-12)+" p. m."));
+      return ampm;
     }
-    tabActivos.addEventListener('click', ()=>activateTab('activos'));
-    tabSalidos.addEventListener('click', ()=>activateTab('salidos'));
+    function overlapMinutes(aStart,aEnd,bStart,bEnd){
+      const start = Math.max(aStart,bStart), end = Math.min(aEnd,bEnd);
+      return Math.max(0, Math.ceil((end - start)/60000));
+    }
+    function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+    function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
 
-    /* ====== Refs UI ====== */
-    const inputPatente = document.getElementById('placa');
-    const inputNotas   = document.getElementById('notas');
-    const inputHora    = document.getElementById('entryTime');
-    const editHourBtn  = document.getElementById('editHourBtn');
-    const btnEntrada   = document.getElementById('btn-entrada');
-    const lista        = document.getElementById('listaEstacionados');
-    const countEl      = document.getElementById('count');
-    const searchInput  = document.getElementById('searchInput');
-    const clearBtn     = document.getElementById('clearFilterBtn');
+    /* Axis labels */
+    xlabelsEl.innerHTML = HRS.map(h=>`<span class="${(h%2)?'h24':''}">${labelForHour(h)}</span>`).join('');
 
-    const exitModal    = document.getElementById('exitModal');
-    const closeModal   = document.getElementById('closeModal');
-    const exitTitle    = document.getElementById('exitTitle');
-    const exitInfo     = document.getElementById('exitInfo');
-    const exitAmount   = document.getElementById('exitAmount');
-    const paymentInput = document.getElementById('paymentInput');
-    const changeOutput = document.getElementById('changeOutput');
-    const confirmButton= document.getElementById('confirmButton');
+    /* State */
+    let historial = []; // [{entradaISO, salidaISO, tipo, placa}]
+    let estacionadosAhora = 0;
 
-    const listaSalidosHoy   = document.getElementById('listaSalidosHoy');
-    const salidosCount      = document.getElementById('salidosCount');
-    const hActivosCount     = document.getElementById('hActivosCount');
-    const hSalidosHoyCount  = document.getElementById('hSalidosHoyCount');
-
-    let tipoSeleccionado = 'auto';
-    let currentItem = null;
-    let cobro = 0;
-    let exitMeta = null;
-    let horaEditada = false;
-
-    document.querySelectorAll('[data-tipo]').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
-        btn.classList.add('active');
-        tipoSeleccionado = btn.dataset.tipo;
-      });
+    // Live estacionados (para “ahora”)
+    onEstacionados(items => {
+      estacionadosAhora = (items||[]).length;
+      renderNow();
     });
 
-    function nowHHMM(){
-      const d=new Date();
-      return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
-    }
-    function updateEntryTime(){
-      if (!horaEditada) inputHora.value = nowHHMM();
-    }
-    updateEntryTime();
-    setInterval(updateEntryTime,60000);
-
-    function toast(msg){
-      const t=document.getElementById('toast');
-      t.textContent=msg;t.className='toast show';
-      setTimeout(()=>t.className='toast',1800);
-    }
-
-    function toggleClearBtn(){
-      const hasText=(searchInput.value||'').trim().length>0;
-      clearBtn.classList.toggle('active',hasText);
-    }
-    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
-    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
-    toggleClearBtn();
-
-    // Botón ✎: habilita edición sin seleccionar todo el texto
-    editHourBtn.addEventListener('click', ()=>{
-      inputHora.readOnly = false;
-      horaEditada = true;
-      const v = inputHora.value;
-      requestAnimationFrame(()=>{
-        inputHora.focus();
-        const len = v.length;
-        if (inputHora.setSelectionRange) inputHora.setSelectionRange(len, len);
-      });
-    });
-
-    // Construye un ISO hoy con HH:MM
-    function isoTodayFromHHMM(hhmm){
-      const [h,m] = (hhmm||'').split(':').map(x=>parseInt(x,10));
-      const d = new Date();
-      if (!isNaN(h)) d.setHours(h);
-      if (!isNaN(m)) d.setMinutes(m);
-      d.setSeconds(0); d.setMilliseconds(0);
-      return d.toISOString();
-    }
-
-    btnEntrada.addEventListener('click',async(e)=>{
-      e.preventDefault();
-      const placa=(inputPatente.value||'').trim().toUpperCase();
-      if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
-
-      let entradaISO, horaTexto;
-      if (horaEditada){
-        horaTexto = inputHora.value;
-        entradaISO = isoTodayFromHHMM(horaTexto);
-      }else{
-        const d = new Date();
-        entradaISO = d.toISOString();
-        horaTexto = nowHHMM();
-      }
-
-      await addEntrada({
-        placa,
-        tipo: tipoSeleccionado,
-        notas: inputNotas.value || '',
-        entradaISO,
-        horaTexto,
-        edited: !!horaEditada
-      });
-
-      // Reset UI
-      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
-      tipoSeleccionado='auto';
-      document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
-      document.getElementById('autoBtn').classList.add('active');
-
-      inputHora.readOnly = true;
-      horaEditada = false;
-      updateEntryTime();
-
-      toast('Vehículo ingresado');
-    });
-
-    // ENTER para ingresar
-    inputPatente.addEventListener('keypress',e=>{if(e.key==='Enter'){e.preventDefault();btnEntrada.click();}});
-
-    /* ====== Estacionados en tiempo real ====== */
-    let cache=[];
-    onEstacionados(items=>{cache=items||[];render();});
-
-    function render(){
-      const term=(searchInput.value||'').trim().toUpperCase();
-      const filtered = term ? cache.filter(v => (v.placa||'').toUpperCase().includes(term)) : cache;
-
-      const lista = document.getElementById('listaEstacionados');
-      lista.innerHTML='';
-      countEl.textContent = cache.length;              // badge de la pestaña
-      if (hActivosCount) hActivosCount.textContent = cache.length; // contador en título
-
-      filtered.forEach(v=>{
-        const li=document.createElement('li');
-        const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
-        const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):(v.horaTexto||'');
-
-        const left=document.createElement('div');
-
-        const plate=document.createElement('span');
-        plate.className='plate';
-        plate.textContent=`${emoji} ${v.placa}`;
-
-        const timeWrap=document.createElement('span');
-        timeWrap.className='time';
-        timeWrap.innerHTML = `${hora}${v.edited ? ' <span class="edited-badge">EDITADO</span>' : ''}`;
-
-        left.appendChild(plate);
-        left.appendChild(timeWrap);
-
-        if(v.notas){
-          const n=document.createElement('span');
-          n.className='note';
-          n.textContent=v.notas;
-          left.appendChild(n);
-        }
-
-        const del=document.createElement('button');
-        del.className='delete-btn';
-        del.textContent='SALIDA';
-        del.addEventListener('click',()=>openExitModal(v));
-
-        li.appendChild(left);
-        li.appendChild(del);
-        lista.appendChild(li);
-      });
-
-      // datalist
-      const dl=document.getElementById('placaSuggestions');
-      dl.innerHTML='';
-      [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
-        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
-      });
-    }
-
-    function formatHM(totalMin){
-      const h=Math.floor(totalMin/60);const m=totalMin%60;
-      if(h<=0)return`${m} min`;if(m<=0)return`${h} h`;return`${h} h ${m} min`;
-    }
-
-    function openExitModal(item){
-      currentItem=item;
-      const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
-      const salida=new Date();
-
-      const min=Math.max(1,Math.ceil((salida-entrada)/60000));
-      const TARIFAS={auto:1800,camioneta:2000,moto:1300};
-      const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
-      let total=tarifaHora;
-      const restantes=Math.max(0,min-60);
-      const bloques30=Math.ceil(restantes/30);
-      total+=bloques30*(tarifaHora/2);
-      cobro=Math.round(total);
-
-      exitMeta={
-        placa:item.placa,
-        tipo:item.tipo,
-        notas:item.notas||"",
-        entradaISO:item.entradaISO||entrada.toISOString(),
-        salidaISO:salida.toISOString(),
-        totalMin:min,
-        totalCobrado:cobro,
-        duracionTexto:formatHM(min),
-        edited: (item.edited === true) || (item.entradaEditada === true)
-      };
-
-      exitTitle.textContent=item.placa.toUpperCase();
-      exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
-      exitAmount.textContent=`$${cobro}`;
-      paymentInput.value='';
-      changeOutput.textContent='Vuelto: $0';
-      exitModal.style.display='flex';
-    }
-
-    paymentInput.addEventListener('input',()=>{
-      const pago=parseFloat(paymentInput.value)||0;
-      const vuelto=pago-cobro;
-      changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;
-    });
-
-    confirmButton.addEventListener('click',async()=>{
-      if(!currentItem)return;
-      await removeEstacionado(currentItem.id, exitMeta);
-      exitModal.style.display='none';
-      toast('Salida confirmada');
-      currentItem=null;
-      exitMeta=null;
-    });
-    closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
-
-    /* =========================
-       Pestaña "Salidos hoy" desde /salidas
-       ========================= */
-    function esDeHoy(ts){
-      const d = new Date(ts);
-      const hoy = new Date();
-      return d.getFullYear()===hoy.getFullYear() && d.getMonth()===hoy.getMonth() && d.getDate()===hoy.getDate();
-    }
-    function hhmm(ts){
-      const d = new Date(ts);
-      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    }
-    function diffHM(iniISO, finISO){
-      const ini = new Date(iniISO), fin = new Date(finISO);
-      const m = Math.max(1, Math.ceil((fin-ini)/60000));
-      const h = Math.floor(m/60), mm = m%60;
-      if(h<=0) return `${mm} min`;
-      if(mm<=0) return `${h} h`;
-      return `${h} h ${mm} min`;
-    }
-
-    function renderSalidosHoy(items){
-      const hoy = items.filter(x=>x.salidaISO && esDeHoy(x.salidaISO));
-      hoy.sort((a,b)=> new Date(b.salidaISO) - new Date(a.salidaISO)); // recientes primero
-
-      salidosCount.textContent = hoy.length;                 // badge de pestaña
-      if (hSalidosHoyCount) hSalidosHoyCount.textContent = hoy.length; // contador en título
-
-      listaSalidosHoy.innerHTML = hoy.map(v=>{
-        const emoji = v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
-        const tIn   = v.entradaISO ? hhmm(v.entradaISO) : '—';
-        const tOut  = v.salidaISO  ? hhmm(v.salidaISO)  : '—';
-        const dur   = (v.entradaISO && v.salidaISO) ? diffHM(v.entradaISO, v.salidaISO) : '—';
-        const placa = v.placa || v.patente || v.dominio || '—';
-        return `
-          <li>
-            <div class="salidos-left">
-              <span class="salidos-placa">${emoji} ${placa}</span>
-              <span class="salidos-sub">Ingresó: ${tIn} — Salió: ${tOut}</span>
-              <span class="salidos-sub">Tiempo total: ${dur}</span>
-            </div>
-          </li>
-        `;
-      }).join('');
-    }
-
-    // Suscripción en tiempo real a /salidas
-    onValue(ref(db, 'salidas'), (snap)=>{
+    // Cargar histórico de /salidas (stream)
+    onValue(ref(db,'salidas'), snap => {
       const val = snap.val() || {};
-      const arr = Object.values(val);
-      renderSalidosHoy(arr);
+      historial = Object.values(val).filter(x=>x.entradaISO && x.salidaISO);
+      renderAll();
     });
+
+    // UI events
+    daySelect.value = String(new Date().getDay()); // default: hoy
+    daySelect.addEventListener('change', renderAll);
+    rangeSelect.addEventListener('change', renderAll);
+
+    function renderAll(){
+      const day = parseInt(daySelect.value,10);
+      const daysBack = parseInt(rangeSelect.value,10);
+      const today = new Date();
+      const from = new Date(); from.setDate(today.getDate()-daysBack+1); from.setHours(0,0,0,0);
+
+      // Filtrar registros dentro del rango
+      const rows = historial.filter(r=>{
+        const end = new Date(r.salidaISO);
+        return end >= from && end <= today;
+      });
+
+      // Encontrar qué días del rango coinciden con ese día de semana (para dividir el promedio)
+      let sampleDays = 0;
+      for(let d = startOfDay(from); d <= today; d = new Date(d.getTime()+86400000)){
+        if (d.getDay() === day) sampleDays++;
+      }
+      sampleSize.textContent = sampleDays;
+
+      // Buckets en minutos por hora (24)
+      const minutesPerHour = new Array(24).fill(0);
+
+      // Sumar “vehículo-minutos” cuando el intervalo solapa cada hora del día SELECCIONADO
+      rows.forEach(r=>{
+        const inD  = new Date(r.entradaISO);
+        const outD = new Date(r.salidaISO);
+        // iteramos por cada día in-between que tenga el weekday == day
+        for(let d = startOfDay(inD); d <= endOfDay(outD); d = new Date(d.getTime()+86400000)){
+          if (d.getDay() !== day) continue;
+          // intervalo de ese día:
+          const dayStart = startOfDay(d).getTime();
+          const dayEnd   = endOfDay(d).getTime();
+          const segStart = Math.max(inD.getTime(), dayStart);
+          const segEnd   = Math.min(outD.getTime(), dayEnd);
+          if (segEnd <= segStart) continue;
+
+          // por cada hora del 0..23 sumo los minutos solapados
+          for(let h=0; h<24; h++){
+            const hStart = dayStart + h*3600000;
+            const hEnd   = hStart + 3600000;
+            const mins = overlapMinutes(segStart, segEnd, hStart, hEnd);
+            if (mins>0) minutesPerHour[h] += mins;
+          }
+        }
+      });
+
+      // Convertir a “vehículos concurrentes promedio” = minutos acumulados / (60 * sampleDays)
+      const avgOcc = minutesPerHour.map(mins => sampleDays ? (mins / (60*sampleDays)) : 0);
+
+      renderChart(avgOcc);
+      renderKPIs(avgOcc);
+      renderNow(avgOcc);
+    }
+
+    function renderChart(values){
+      const max = Math.max(1, ...values);
+      chartEl.innerHTML = '';
+      values.forEach((v,h)=>{
+        const pct = (v/max)*100;
+        const div = document.createElement('div');
+        div.className = 'bar';
+        if (h === new Date().getHours()) div.classList.add('live');
+        div.style.height = (pct*0.94 + 2) + '%'; // 2% piso visual
+        div.dataset.tip = `${labelForHour(h)} · ${v.toFixed(1)} veh`;
+        chartEl.appendChild(div);
+      });
+    }
+
+    function renderKPIs(values=[]){
+      const peakVal = Math.max(0, ...values);
+      const peakHr  = values.findIndex(v=>v===peakVal);
+      kpiPeak.textContent = peakVal ? `${labelForHour(peakHr)} · ${peakVal.toFixed(1)} veh` : '–';
+      kpiToday.textContent = countSalidasHoy();
+    }
+
+    function countSalidasHoy(){
+      const today = new Date();
+      const s0 = startOfDay(today).getTime(), s1 = endOfDay(today).getTime();
+      return historial.filter(x=>{
+        const t = new Date(x.salidaISO).getTime();
+        return t>=s0 && t<=s1;
+      }).length;
+    }
+
+    function renderNow(values=[]){
+      // Mostrar estacionados ahora y semáforo textual vs pico del día seleccionado
+      kpiNow.textContent = `${estacionadosAhora} veh`;
+      const peak = values.length ? Math.max(1, ...values) : Math.max(1, estacionadosAhora);
+      const ratio = estacionadosAhora / peak;
+      const txt =
+        ratio < 0.4 ? 'Poco concurrido' :
+        ratio < 0.7 ? 'Moderado' :
+                      'Muy concurrido';
+      liveText.textContent = txt;
+      // también remarco la barra de la hora actual si el chart existe
+      [...chartEl.children].forEach((b,i)=> b.classList.toggle('live', i===new Date().getHours()));
+    }
   </script>
 </body>
 </html>
