@@ -1,236 +1,225 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Estadísticas — Horarios Populares</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estadísticas de Ingresos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    *{box-sizing:border-box} body{font-family:Roboto,system-ui,-apple-system,sans-serif;background:#f5f7fa;color:#223; margin:0; padding:12px}
-    .wrap{max-width:1000px;margin:0 auto;background:#fff;border:1px solid #e6eaf0;border-radius:16px;box-shadow:0 8px 24px rgba(18,33,61,.06);overflow:hidden}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #eef2f7;background:#fafcff}
-    h1{font-size:1.25rem;margin:0}
-    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    select,button{padding:8px 10px;border:1px solid #d7dde3;border-radius:10px;background:#fff;font-weight:700;color:#415466;cursor:pointer}
-    .badge-live{display:inline-block;background:#e83f3f;color:#fff;font-weight:800;letter-spacing:.02em;padding:4px 8px;border-radius:8px;margin-right:8px;font-size:.8rem}
-    .muted{color:#6c7a8a;font-weight:700}
-    main{padding:16px 18px}
-
-    /* Chart */
-    .chart{display:grid;grid-template-columns:repeat(24,1fr);gap:6px;align-items:end;height:220px;padding:18px 8px 10px;border-bottom:1px dashed #e6eaf0}
-    .bar{position:relative;background:#5b8aa6;border-radius:8px 8px 0 0;height:0;transition:height .4s}
-    .bar.live{outline:2px solid #f16363; background:#c65c5c}
-    .bar:hover::after{content:attr(data-tip);position:absolute;left:50%;transform:translateX(-50%);bottom:100%;margin-bottom:8px;background:#1f2a36;color:#fff;padding:6px 8px;border-radius:6px;font-size:.75rem;white-space:nowrap}
-    .xlabels{display:grid;grid-template-columns:repeat(24,1fr);gap:6px;margin-top:8px;font-size:.78rem;color:#6c7a8a}
-    .xlabels span{justify-self:center}
-
-    /* KPIs */
-    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
-    .kpi{border:1px solid #eef2f7;border-left:4px solid #2f7ad6;border-radius:12px;background:#fbfdff;padding:12px}
-    .kpi h4{margin:0 0 6px 0;color:#6c7a8a;font-size:.85rem;text-transform:uppercase;letter-spacing:.02em}
-    .kpi .v{font-weight:800;font-size:1.25rem;color:#1f2a36}
-
-    footer{padding:14px 18px;color:#6c7a8a;font-size:.85rem}
-
-    @media (max-width:900px){ .chart{grid-template-columns:repeat(12,1fr)} .xlabels{grid-template-columns:repeat(12,1fr)} .h24{display:none} }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #ecf0f1;
+      min-height: 100vh;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      background: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    header {
+      padding: 20px;
+      background: #3498db;
+      border-bottom: 2px solid #2980b9;
+      text-align: center;
+    }
+    header .title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      padding: 15px 20px;
+    }
+    .kpi {
+      background: #f8f9fa;
+      border: 1px solid #ecf0f1;
+      border-left: 4px solid #3498db;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .kpi h4 {
+      color: #7f8c8d;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .kpi .val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+    .chart-container {
+      padding: 20px;
+      position: relative;
+      height: 400px;
+    }
+    .chart-title {
+      text-align: center;
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+    /* Responsive */
+    @media (max-width: 960px) {
+      .kpis { grid-template-columns: 1fr; }
+      .chart-container { height: 300px; }
+    }
+    @media (max-width: 600px) {
+      header .title { font-size: 1.4rem; }
+      .container { max-width: 100%; }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="container">
     <header>
-      <h1>Horarios de mayor concurrencia</h1>
-      <div class="controls">
-        <label class="muted">Día</label>
-        <select id="daySelect">
-          <option value="0">domingo</option>
-          <option value="1">lunes</option>
-          <option value="2">martes</option>
-          <option value="3">miércoles</option>
-          <option value="4">jueves</option>
-          <option value="5">viernes</option>
-          <option value="6">sábado</option>
-        </select>
-        <label class="muted">Rango</label>
-        <select id="rangeSelect">
-          <option value="7">Últimos 7 días</option>
-          <option value="30" selected>Últimos 30 días</option>
-          <option value="90">Últimos 90 días</option>
-        </select>
-      </div>
+      <div class="title">Estadísticas de Ingresos</div>
     </header>
-
-    <main>
-      <div style="margin-bottom:8px;">
-        <span class="badge-live">EN TIEMPO REAL</span>
-        <span id="liveText" class="muted">Calculando…</span>
+    <section class="kpis">
+      <div class="kpi">
+        <h4>Total Ingresos</h4>
+        <div class="val" id="totalIngresos">0</div>
       </div>
-
-      <div id="chart" class="chart" aria-label="Promedio de ocupación por hora"></div>
-      <div class="xlabels" id="xlabels"></div>
-
-      <section class="kpis">
-        <div class="kpi"><h4>Pico promedio del día</h4><div class="v" id="kpiPeak">–</div></div>
-        <div class="kpi"><h4>Ocupación ahora</h4><div class="v" id="kpiNow">–</div></div>
-        <div class="kpi"><h4>Vehículos hoy</h4><div class="v" id="kpiToday">–</div></div>
-      </section>
-    </main>
-
-    <footer>Basado en entradas y salidas históricas (n = <span id="sampleSize">0</span> días del día seleccionado). Promedio en “vehículos concurrentes”.</footer>
+      <div class="kpi">
+        <h4>Recaudación</h4>
+        <div class="val" id="recaudacion">$0</div>
+      </div>
+      <div class="kpi">
+        <h4>Hora Pico</h4>
+        <div class="val" id="horaPico">--:--</div>
+      </div>
+    </section>
+    <div class="chart-container">
+      <div class="chart-title">Ocupación por Hora del Día</div>
+      <canvas id="ocupacionChart"></canvas>
+    </div>
   </div>
-
+  <!-- Firebase -->
   <script type="module">
-    /* Firebase */
-    import { app } from './firebase.js';
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
-    import { onEstacionados } from './firebase.js';
-    const db = getDatabase(app);
+    import { db } from './firebase.js';
+    import { ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-    /* UI refs */
-    const daySelect   = document.getElementById('daySelect');
-    const rangeSelect = document.getElementById('rangeSelect');
-    const chartEl     = document.getElementById('chart');
-    const xlabelsEl   = document.getElementById('xlabels');
-    const liveText    = document.getElementById('liveText');
-    const kpiPeak     = document.getElementById('kpiPeak');
-    const kpiNow      = document.getElementById('kpiNow');
-    const kpiToday    = document.getElementById('kpiToday');
-    const sampleSize  = document.getElementById('sampleSize');
+    // Configuración
+    const TARIFAS = { auto: 1800, camioneta: 2000, moto: 1300 };
+    let ingresos = [];
+    let salidas = [];
+    let chart = null;
 
-    /* Helpers */
-    const HRS = Array.from({length:24},(_,h)=>h);
-    function pad2(n){ return String(n).padStart(2,'0'); }
-    function labelForHour(h){
-      const ampm = h===0? "12 a. m.": (h<12? h+" a. m.": (h===12? "12 p. m.": (h-12)+" p. m."));
-      return ampm;
+    // Utilidades
+    const $ = (id) => document.getElementById(id);
+    function parseISO(s) {
+      try { return new Date(s); } catch { return null; }
     }
-    function overlapMinutes(aStart,aEnd,bStart,bEnd){
-      const start = Math.max(aStart,bStart), end = Math.min(aEnd,bEnd);
-      return Math.max(0, Math.ceil((end - start)/60000));
+    function getHour(time) {
+      return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-    function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
-    function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
+    function computeCharge(item) {
+      if (typeof item.totalCobrado === 'number') return item.totalCobrado;
+      const tarifa = TARIFAS[item.tipo] ?? TARIFAS.auto;
+      const entrada = parseISO(item.entradaISO);
+      const salida = parseISO(item.salidaISO);
+      if (!entrada || !salida) return 0;
+      const min = Math.max(1, Math.ceil((salida - entrada) / 60000));
+      let total = tarifa;
+      const resto = Math.max(0, min - 60);
+      total += Math.ceil(resto / 30) * (tarifa / 2);
+      return Math.round(total);
+    }
 
-    /* Axis labels */
-    xlabelsEl.innerHTML = HRS.map(h=>`<span class="${(h%2)?'h24':''}">${labelForHour(h)}</span>`).join('');
-
-    /* State */
-    let historial = []; // [{entradaISO, salidaISO, tipo, placa}]
-    let estacionadosAhora = 0;
-
-    // Live estacionados (para “ahora”)
-    onEstacionados(items => {
-      estacionadosAhora = (items||[]).length;
-      renderNow();
-    });
-
-    // Cargar histórico de /salidas (stream)
-    onValue(ref(db,'salidas'), snap => {
+    // Cargar ingresos
+    onValue(ref(db, 'estacionados'), (snap) => {
       const val = snap.val() || {};
-      historial = Object.values(val).filter(x=>x.entradaISO && x.salidaISO);
-      renderAll();
+      ingresos = Object.values(val)
+        .map(x => ({ ...x, entrada: parseISO(x.entradaISO) }))
+        .filter(x => x.entrada);
+      updateStats();
     });
 
-    // UI events
-    daySelect.value = String(new Date().getDay()); // default: hoy
-    daySelect.addEventListener('change', renderAll);
-    rangeSelect.addEventListener('change', renderAll);
+    // Cargar salidas
+    onValue(ref(db, 'salidas'), (snap) => {
+      const val = snap.val() || {};
+      salidas = Object.values(val)
+        .map(x => ({ ...x, salida: parseISO(x.salidaISO), entrada: parseISO(x.entradaISO) }))
+        .filter(x => x.salida && x.entrada);
+      updateStats();
+    });
 
-    function renderAll(){
-      const day = parseInt(daySelect.value,10);
-      const daysBack = parseInt(rangeSelect.value,10);
-      const today = new Date();
-      const from = new Date(); from.setDate(today.getDate()-daysBack+1); from.setHours(0,0,0,0);
+    // Actualizar estadísticas
+    function updateStats() {
+      const allData = [...ingresos, ...salidas].filter(x => x.entrada);
+      const totalIngresos = ingresos.length;
+      const totalRecaudacion = salidas.reduce((sum, x) => sum + computeCharge(x), 0);
+      const horaPico = getPeakHour(allData);
 
-      // Filtrar registros dentro del rango
-      const rows = historial.filter(r=>{
-        const end = new Date(r.salidaISO);
-        return end >= from && end <= today;
+      $('totalIngresos').textContent = totalIngresos;
+      $('recaudacion').textContent = `$${totalRecaudacion.toLocaleString('es-AR')}`;
+      $('horaPico').textContent = horaPico;
+
+      renderChart(allData);
+    }
+
+    // Hora pico
+    function getPeakHour(data) {
+      const hours = {};
+      data.forEach(x => {
+        if (x.entrada) {
+          const hour = x.entrada.getHours();
+          hours[hour] = (hours[hour] || 0) + 1;
+        }
       });
+      const maxHour = Object.keys(hours).reduce((a, b) => hours[a] > hours[b] ? a : b, 0);
+      return `${parseInt(maxHour)}:00 - ${parseInt(maxHour) + 1}:00`;
+    }
 
-      // Encontrar qué días del rango coinciden con ese día de semana (para dividir el promedio)
-      let sampleDays = 0;
-      for(let d = startOfDay(from); d <= today; d = new Date(d.getTime()+86400000)){
-        if (d.getDay() === day) sampleDays++;
-      }
-      sampleSize.textContent = sampleDays;
+    // Renderizar gráfico
+    function renderChart(data) {
+      const ctx = $('ocupacionChart').getContext('2d');
+      const hours = Array.from({ length: 24 }, (_, i) => i);
+      const counts = hours.map(h => data.filter(x => x.entrada && x.entrada.getHours() === h).length);
 
-      // Buckets en minutos por hora (24)
-      const minutesPerHour = new Array(24).fill(0);
-
-      // Sumar “vehículo-minutos” cuando el intervalo solapa cada hora del día SELECCIONADO
-      rows.forEach(r=>{
-        const inD  = new Date(r.entradaISO);
-        const outD = new Date(r.salidaISO);
-        // iteramos por cada día in-between que tenga el weekday == day
-        for(let d = startOfDay(inD); d <= endOfDay(outD); d = new Date(d.getTime()+86400000)){
-          if (d.getDay() !== day) continue;
-          // intervalo de ese día:
-          const dayStart = startOfDay(d).getTime();
-          const dayEnd   = endOfDay(d).getTime();
-          const segStart = Math.max(inD.getTime(), dayStart);
-          const segEnd   = Math.min(outD.getTime(), dayEnd);
-          if (segEnd <= segStart) continue;
-
-          // por cada hora del 0..23 sumo los minutos solapados
-          for(let h=0; h<24; h++){
-            const hStart = dayStart + h*3600000;
-            const hEnd   = hStart + 3600000;
-            const mins = overlapMinutes(segStart, segEnd, hStart, hEnd);
-            if (mins>0) minutesPerHour[h] += mins;
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: hours.map(h => `${h}:00 - ${h + 1}:00`),
+          datasets: [{
+            label: 'Ocupación',
+            data: counts,
+            backgroundColor: counts.map(c => c === Math.max(...counts) ? '#e74c3c' : '#3498db'), // Rojo para hora pico
+            borderColor: '#2980b9',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Número de Vehículos' }
+            },
+            x: {
+              title: { display: true, text: 'Hora del Día' }
+            }
+          },
+          plugins: {
+            legend: { display: false }
           }
         }
       });
-
-      // Convertir a “vehículos concurrentes promedio” = minutos acumulados / (60 * sampleDays)
-      const avgOcc = minutesPerHour.map(mins => sampleDays ? (mins / (60*sampleDays)) : 0);
-
-      renderChart(avgOcc);
-      renderKPIs(avgOcc);
-      renderNow(avgOcc);
-    }
-
-    function renderChart(values){
-      const max = Math.max(1, ...values);
-      chartEl.innerHTML = '';
-      values.forEach((v,h)=>{
-        const pct = (v/max)*100;
-        const div = document.createElement('div');
-        div.className = 'bar';
-        if (h === new Date().getHours()) div.classList.add('live');
-        div.style.height = (pct*0.94 + 2) + '%'; // 2% piso visual
-        div.dataset.tip = `${labelForHour(h)} · ${v.toFixed(1)} veh`;
-        chartEl.appendChild(div);
-      });
-    }
-
-    function renderKPIs(values=[]){
-      const peakVal = Math.max(0, ...values);
-      const peakHr  = values.findIndex(v=>v===peakVal);
-      kpiPeak.textContent = peakVal ? `${labelForHour(peakHr)} · ${peakVal.toFixed(1)} veh` : '–';
-      kpiToday.textContent = countSalidasHoy();
-    }
-
-    function countSalidasHoy(){
-      const today = new Date();
-      const s0 = startOfDay(today).getTime(), s1 = endOfDay(today).getTime();
-      return historial.filter(x=>{
-        const t = new Date(x.salidaISO).getTime();
-        return t>=s0 && t<=s1;
-      }).length;
-    }
-
-    function renderNow(values=[]){
-      // Mostrar estacionados ahora y semáforo textual vs pico del día seleccionado
-      kpiNow.textContent = `${estacionadosAhora} veh`;
-      const peak = values.length ? Math.max(1, ...values) : Math.max(1, estacionadosAhora);
-      const ratio = estacionadosAhora / peak;
-      const txt =
-        ratio < 0.4 ? 'Poco concurrido' :
-        ratio < 0.7 ? 'Moderado' :
-                      'Muy concurrido';
-      liveText.textContent = txt;
-      // también remarco la barra de la hora actual si el chart existe
-      [...chartEl.children].forEach((b,i)=> b.classList.toggle('live', i===new Date().getHours()));
     }
   </script>
 </body>
