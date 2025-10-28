@@ -77,24 +77,25 @@
     .toast.show{visibility:visible;animation:fadeInOut 2s}
     @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
 
-    /* === NUEVO: estilos sección "Salidos hoy" (aislado, no pisa nada) === */
-    .history-section{
-      max-width:1000px; margin:12px auto 0; padding:12px 14px;
-      background:#ffffff;border:1px solid #ddd;border-radius:8px;
-      box-shadow:0 2px 5px rgba(0,0,0,.06);
+    /* ====== NUEVO: TABS ====== */
+    .tabs{display:flex;gap:8px;margin-bottom:10px}
+    .tab-btn{
+      flex:1;padding:8px 10px;border:1px solid #d7dde3;border-radius:8px;background:#f5f7fa;
+      cursor:pointer;font-weight:700;font-size:13px;color:#415466;display:flex;align-items:center;justify-content:center;gap:8px
     }
-    .history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-    .history-badge{
-      display:inline-block;padding:2px 8px;border-radius:999px;
-      background:#eef1f4;color:#5c6a7a;font-size:12px;font-weight:700
-    }
-    .history-list li{
+    .tab-btn.active{background:#e6f0ff;border-color:#bcd7ff;color:#0f54b3;box-shadow:0 1px 3px rgba(0,0,0,.06) inset}
+    .tab-badge{display:inline-block;padding:1px 8px;border-radius:999px;background:#eef1f4;color:#5c6a7a;font-size:12px;font-weight:700}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    /* ====== NUEVO: estilos lista salidos en tab ====== */
+    .salidos-list li{
       display:flex;justify-content:space-between;align-items:center;
       padding:8px 10px;margin-bottom:8px;background:#f7f9fb;border:1px solid #e7edf3;border-radius:8px
     }
-    .history-left{display:flex;flex-direction:column}
-    .history-plate{font-weight:700;color:#324253}
-    .history-sub{font-size:.8em;color:#617384}
+    .salidos-left{display:flex;flex-direction:column}
+    .salidos-placa{font-weight:700;color:#324253}
+    .salidos-sub{font-size:.8em;color:#617384}
   </style>
 
   <script type="module" src="./firebase.js"></script>
@@ -126,20 +127,31 @@
     </div>
 
     <div class="list-section">
-      <h2>ESTACIONADOS: <span id="count">0</span></h2>
-      <input type="text" id="searchInput" placeholder="BUSCAR PATENTE" />
-      <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
-      <ul id="listaEstacionados"></ul>
+      <!-- ====== NUEVO: Tabs header ====== -->
+      <div class="tabs" role="tablist" aria-label="Cambiar vista">
+        <button id="tab-activos" class="tab-btn active" role="tab" aria-controls="panel-activos" aria-selected="true">
+          🟢 En curso <span class="tab-badge" id="count">0</span>
+        </button>
+        <button id="tab-salidos" class="tab-btn" role="tab" aria-controls="panel-salidos" aria-selected="false">
+          📅 Salidos hoy <span class="tab-badge" id="salidosCount">0</span>
+        </button>
+      </div>
+
+      <!-- Panel: En curso (tu vista original) -->
+      <section id="panel-activos" class="tab-panel active">
+        <h2>ESTACIONADOS</h2>
+        <input type="text" id="searchInput" placeholder="BUSCAR PATENTE" />
+        <button id="clearFilterBtn" class="clear-filter-btn">BORRAR FILTRO</button>
+        <ul id="listaEstacionados"></ul>
+      </section>
+
+      <!-- Panel: Salidos hoy -->
+      <section id="panel-salidos" class="tab-panel" aria-label="Vehículos salidos hoy">
+        <h2>VEHÍCULOS SALIDOS HOY</h2>
+        <ul id="listaSalidosHoy" class="salidos-list"></ul>
+      </section>
     </div>
   </div>
-
-  <!-- === NUEVO: sección "Vehículos salidos hoy" debajo del panel principal === -->
-  <section class="history-section" aria-label="Vehículos salidos hoy">
-    <div class="history-header">
-      <h2>VEHÍCULOS SALIDOS HOY <span id="salidosCount" class="history-badge">0</span></h2>
-    </div>
-    <ul id="listaSalidosHoy" class="history-list"></ul>
-  </section>
 
   <!-- Modal de salida -->
   <div id="exitModal" class="modal">
@@ -159,11 +171,30 @@
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
 
-    /* === NUEVO: imports para leer /salidas en tiempo real === */
+    /* ====== NUEVO: Firebase RTDB para /salidas ====== */
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
     import { app } from './firebase.js';
     const db = getDatabase(app);
 
+    /* ====== TABS ====== */
+    const tabActivos = document.getElementById('tab-activos');
+    const tabSalidos = document.getElementById('tab-salidos');
+    const panelActivos = document.getElementById('panel-activos');
+    const panelSalidos = document.getElementById('panel-salidos');
+
+    function activateTab(which){
+      const isActivos = which === 'activos';
+      tabActivos.classList.toggle('active', isActivos);
+      tabSalidos.classList.toggle('active', !isActivos);
+      tabActivos.setAttribute('aria-selected', String(isActivos));
+      tabSalidos.setAttribute('aria-selected', String(!isActivos));
+      panelActivos.classList.toggle('active', isActivos);
+      panelSalidos.classList.toggle('active', !isActivos);
+    }
+    tabActivos.addEventListener('click', ()=>activateTab('activos'));
+    tabSalidos.addEventListener('click', ()=>activateTab('salidos'));
+
+    /* ====== Referencias UI existentes ====== */
     const inputPatente = document.getElementById('placa');
     const inputNotas   = document.getElementById('notas');
     const inputHora    = document.getElementById('entryTime');
@@ -183,7 +214,7 @@
     const changeOutput = document.getElementById('changeOutput');
     const confirmButton= document.getElementById('confirmButton');
 
-    /* === NUEVO: refs UI para "salidos hoy" === */
+    /* ====== NUEVO: refs UI Salidos ====== */
     const listaSalidosHoy = document.getElementById('listaSalidosHoy');
     const salidosCount    = document.getElementById('salidosCount');
 
@@ -225,7 +256,6 @@
     editHourBtn.addEventListener('click', ()=>{
       inputHora.readOnly = false;
       horaEditada = true;
-      // cursor al final sin selección
       const v = inputHora.value;
       requestAnimationFrame(()=>{
         inputHora.focus();
@@ -304,7 +334,6 @@
 
         const timeWrap=document.createElement('span');
         timeWrap.className='time';
-        // hora + pill si editado
         timeWrap.innerHTML = `${hora}${v.edited ? ' <span class="edited-badge">EDITADO</span>' : ''}`;
 
         left.appendChild(plate);
@@ -360,7 +389,6 @@
         totalMin:min,
         totalCobrado:cobro,
         duracionTexto:formatHM(min),
-        // 👉 importante para que el dashboard muestre el indicador
         edited: (item.edited === true) || (item.entradaEditada === true)
       };
 
@@ -389,7 +417,7 @@
     closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
 
     /* =========================
-       === NUEVO: "Salidos hoy" desde Firebase (/salidas)
+       === NUEVO: Pestaña "Salidos hoy" desde /salidas ===
        - Emoji por tipo
        - Ingreso / Salida
        - Tiempo total transcurrido
@@ -415,10 +443,9 @@
 
     function renderSalidosHoy(items){
       const hoy = items.filter(x=>x.salidaISO && esDeHoy(x.salidaISO));
-      // más recientes primero
-      hoy.sort((a,b)=> new Date(b.salidaISO) - new Date(a.salidaISO));
-
+      hoy.sort((a,b)=> new Date(b.salidaISO) - new Date(a.salidaISO)); // recientes primero
       salidosCount.textContent = hoy.length;
+
       listaSalidosHoy.innerHTML = hoy.map(v=>{
         const emoji = v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
         const tIn   = v.entradaISO ? hhmm(v.entradaISO) : '—';
@@ -427,17 +454,17 @@
         const placa = v.placa || v.patente || v.dominio || '—';
         return `
           <li>
-            <div class="history-left">
-              <span class="history-plate">${emoji} ${placa}</span>
-              <span class="history-sub">Ingresó: ${tIn} — Salió: ${tOut}</span>
-              <span class="history-sub">Tiempo total: ${dur}</span>
+            <div class="salidos-left">
+              <span class="salidos-placa">${emoji} ${placa}</span>
+              <span class="salidos-sub">Ingresó: ${tIn} — Salió: ${tOut}</span>
+              <span class="salidos-sub">Tiempo total: ${dur}</span>
             </div>
           </li>
         `;
       }).join('');
     }
 
-    // Suscripción a /salidas
+    // Suscripción en tiempo real a /salidas
     onValue(ref(db, 'salidas'), (snap)=>{
       const val = snap.val() || {};
       const arr = Object.values(val);
