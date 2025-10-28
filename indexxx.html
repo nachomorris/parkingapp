@@ -17,6 +17,7 @@
     .ingreso input#placa{font-size:1.1em;padding:10px}
     .ingreso .vehicle-buttons{display:flex;justify-content:space-between;margin-bottom:10px}
 
+    /* Hora + botón editar alineados */
     .time-row{display:flex;align-items:center;gap:8px}
     .time-row input{flex:1}
     .edit-hour-btn{
@@ -49,9 +50,17 @@
     .time{font-size:.85em;color:#555;margin-top:4px;display:flex;align-items:center;gap:6px}
     .note{font-size:.7em;color:#e74c3c;margin-top:4px;word-break:break-word;display:block}
 
+    /* Badge EDITADO */
     .edited-badge{
-      display:inline-block;font-size:.68em;font-weight:700;color:#1161c2;
-      background:#e6f0ff;border:1px solid #bcd7ff;padding:2px 6px;border-radius:6px;letter-spacing:.02em;
+      display:inline-block;
+      font-size:.68em;
+      font-weight:700;
+      color:#1161c2;
+      background:#e6f0ff;
+      border:1px solid #bcd7ff;
+      padding:2px 6px;
+      border-radius:6px;
+      letter-spacing:.02em;
     }
 
     .modal{display:none;position:fixed;z-index:1001;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.4);align-items:center;justify-content:center}
@@ -68,25 +77,24 @@
     .toast.show{visibility:visible;animation:fadeInOut 2s}
     @keyframes fadeInOut{0%{opacity:0}10%{opacity:1}90%{opacity:1}100%{opacity:0}}
 
-    /* === NUEVO: sección de salidos === */
-    .salidos-section{
-      max-width:1000px;margin:15px auto 0;padding:15px;
-      background:#fff;border:1px solid #ddd;border-radius:8px;
+    /* === NUEVO: estilos sección "Salidos hoy" (aislado, no pisa nada) === */
+    .history-section{
+      max-width:1000px; margin:12px auto 0; padding:12px 14px;
+      background:#ffffff;border:1px solid #ddd;border-radius:8px;
       box-shadow:0 2px 5px rgba(0,0,0,.06);
     }
-    .salidos-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-    .salidos-badge{
+    .history-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .history-badge{
       display:inline-block;padding:2px 8px;border-radius:999px;
       background:#eef1f4;color:#5c6a7a;font-size:12px;font-weight:700
     }
-    .salidos-list li{
+    .history-list li{
       display:flex;justify-content:space-between;align-items:center;
-      padding:8px 10px;margin-bottom:8px;background:#f7f9fb;
-      border:1px solid #e7edf3;border-radius:8px
+      padding:8px 10px;margin-bottom:8px;background:#f7f9fb;border:1px solid #e7edf3;border-radius:8px
     }
-    .salidos-left{display:flex;flex-direction:column}
-    .salidos-placa{font-weight:700;color:#324253}
-    .salidos-sub{font-size:.8em;color:#617384}
+    .history-left{display:flex;flex-direction:column}
+    .history-plate{font-weight:700;color:#324253}
+    .history-sub{font-size:.8em;color:#617384}
   </style>
 
   <script type="module" src="./firebase.js"></script>
@@ -98,6 +106,8 @@
         <h2>INGRESO DE VEHÍCULO</h2>
 
         <input type="text" id="placa" placeholder="Patente" list="placaSuggestions" autocomplete="off" />
+
+        <!-- Hora + botón alineados -->
         <div class="time-row">
           <input type="text" id="entryTime" value="" readonly />
           <button id="editHourBtn" class="edit-hour-btn" title="Editar hora">✎</button>
@@ -123,14 +133,15 @@
     </div>
   </div>
 
-  <!-- Nueva sección de salidos -->
-  <section class="salidos-section">
-    <div class="salidos-header">
-      <h2>VEHÍCULOS SALIDOS HOY <span id="salidosCount" class="salidos-badge">0</span></h2>
+  <!-- === NUEVO: sección "Vehículos salidos hoy" debajo del panel principal === -->
+  <section class="history-section" aria-label="Vehículos salidos hoy">
+    <div class="history-header">
+      <h2>VEHÍCULOS SALIDOS HOY <span id="salidosCount" class="history-badge">0</span></h2>
     </div>
-    <ul id="listaSalidos"></ul>
+    <ul id="listaSalidosHoy" class="history-list"></ul>
   </section>
 
+  <!-- Modal de salida -->
   <div id="exitModal" class="modal">
     <div class="modal-content">
       <span class="close-modal" id="closeModal">&times;</span>
@@ -147,16 +158,243 @@
 
   <script type="module">
     import { addEntrada, onEstacionados, removeEstacionado } from './firebase.js';
+
+    /* === NUEVO: imports para leer /salidas en tiempo real === */
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
     import { app } from './firebase.js';
-
     const db = getDatabase(app);
 
-    // ---- referencias ----
-    const listaSalidos = document.getElementById('listaSalidos');
-    const salidosCount = document.getElementById('salidosCount');
+    const inputPatente = document.getElementById('placa');
+    const inputNotas   = document.getElementById('notas');
+    const inputHora    = document.getElementById('entryTime');
+    const editHourBtn  = document.getElementById('editHourBtn');
+    const btnEntrada   = document.getElementById('btn-entrada');
+    const lista        = document.getElementById('listaEstacionados');
+    const countEl      = document.getElementById('count');
+    const searchInput  = document.getElementById('searchInput');
+    const clearBtn     = document.getElementById('clearFilterBtn');
 
-    // ---- función para filtrar solo los de hoy ----
+    const exitModal    = document.getElementById('exitModal');
+    const closeModal   = document.getElementById('closeModal');
+    const exitTitle    = document.getElementById('exitTitle');
+    const exitInfo     = document.getElementById('exitInfo');
+    const exitAmount   = document.getElementById('exitAmount');
+    const paymentInput = document.getElementById('paymentInput');
+    const changeOutput = document.getElementById('changeOutput');
+    const confirmButton= document.getElementById('confirmButton');
+
+    /* === NUEVO: refs UI para "salidos hoy" === */
+    const listaSalidosHoy = document.getElementById('listaSalidosHoy');
+    const salidosCount    = document.getElementById('salidosCount');
+
+    let tipoSeleccionado = 'auto';
+    let currentItem = null;
+    let cobro = 0;
+    let exitMeta = null;
+    let horaEditada = false; // marca si el usuario tocó la hora
+
+    const autoBtn = document.getElementById('autoBtn');
+    const camionetaBtn = document.getElementById('camionetaBtn');
+    const motoBtn = document.getElementById('motoBtn');
+
+    document.querySelectorAll('[data-tipo]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
+        btn.classList.add('active');
+        tipoSeleccionado = btn.dataset.tipo;
+      });
+    });
+
+    function nowHHMM(){
+      const d=new Date();
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+    }
+    function updateEntryTime(){
+      if (!horaEditada) inputHora.value = nowHHMM(); // no pisar si el usuario editó
+    }
+    updateEntryTime(); setInterval(updateEntryTime,60000);
+
+    function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',1800);}
+
+    function toggleClearBtn(){const hasText=(searchInput.value||'').trim().length>0;clearBtn.classList.toggle('active',hasText);}
+    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
+    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
+    toggleClearBtn();
+
+    // Botón ✎: habilita edición sin seleccionar todo el texto
+    editHourBtn.addEventListener('click', ()=>{
+      inputHora.readOnly = false;
+      horaEditada = true;
+      // cursor al final sin selección
+      const v = inputHora.value;
+      requestAnimationFrame(()=>{
+        inputHora.focus();
+        const len = v.length;
+        if (inputHora.setSelectionRange) inputHora.setSelectionRange(len, len);
+      });
+    });
+
+    // Construye un ISO hoy con HH:MM
+    function isoTodayFromHHMM(hhmm){
+      const [h,m] = (hhmm||'').split(':').map(x=>parseInt(x,10));
+      const d = new Date();
+      if (!isNaN(h)) d.setHours(h);
+      if (!isNaN(m)) d.setMinutes(m);
+      d.setSeconds(0); d.setMilliseconds(0);
+      return d.toISOString();
+    }
+
+    btnEntrada.addEventListener('click',async(e)=>{
+      e.preventDefault();
+      const placa=(inputPatente.value||'').trim().toUpperCase();
+      if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
+
+      let entradaISO, horaTexto;
+      if (horaEditada){
+        horaTexto = inputHora.value;
+        entradaISO = isoTodayFromHHMM(horaTexto);
+      }else{
+        const d = new Date();
+        entradaISO = d.toISOString();
+        horaTexto = nowHHMM();
+      }
+
+      await addEntrada({
+        placa,
+        tipo: tipoSeleccionado,
+        notas: inputNotas.value || '',
+        entradaISO,
+        horaTexto,
+        edited: !!horaEditada  // bandera para UI y dashboard
+      });
+
+      // Reset UI
+      inputPatente.value=''; inputNotas.value=''; inputPatente.focus();
+      tipoSeleccionado='auto';
+      autoBtn.classList.add('active'); camionetaBtn.classList.remove('active'); motoBtn.classList.remove('active');
+
+      inputHora.readOnly = true;
+      horaEditada = false;
+      updateEntryTime();
+
+      toast('Vehículo ingresado');
+    });
+
+    // ENTER para ingresar
+    inputPatente.addEventListener('keypress',e=>{if(e.key==='Enter'){e.preventDefault();btnEntrada.click();}});
+
+    let cache=[];
+    onEstacionados(items=>{cache=items||[];render();});
+
+    function render(){
+      const term=(searchInput.value||'').trim().toUpperCase();
+      const filtered=term?cache.filter(v=>(v.placa||'').toUpperCase().includes(term)):cache;
+      lista.innerHTML='';countEl.textContent=cache.length;
+
+      filtered.forEach(v=>{
+        const li=document.createElement('li');
+        const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
+        const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):(v.horaTexto||'');
+
+        const left=document.createElement('div');
+
+        const plate=document.createElement('span');
+        plate.className='plate';
+        plate.textContent=`${emoji} ${v.placa}`;
+
+        const timeWrap=document.createElement('span');
+        timeWrap.className='time';
+        // hora + pill si editado
+        timeWrap.innerHTML = `${hora}${v.edited ? ' <span class="edited-badge">EDITADO</span>' : ''}`;
+
+        left.appendChild(plate);
+        left.appendChild(timeWrap);
+
+        if(v.notas){
+          const n=document.createElement('span');
+          n.className='note';
+          n.textContent=v.notas;
+          left.appendChild(n);
+        }
+
+        const del=document.createElement('button');
+        del.className='delete-btn';
+        del.textContent='SALIDA';
+        del.addEventListener('click',()=>openExitModal(v));
+
+        li.appendChild(left);
+        li.appendChild(del);
+        lista.appendChild(li);
+      });
+
+      // datalist
+      const dl=document.getElementById('placaSuggestions');
+      dl.innerHTML='';
+      [...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{
+        const opt=document.createElement('option'); opt.value=p; dl.appendChild(opt);
+      });
+    }
+
+    function formatHM(totalMin){const h=Math.floor(totalMin/60);const m=totalMin%60;if(h<=0)return`${m} min`;if(m<=0)return`${h} h`;return`${h} h ${m} min`;}
+
+    function openExitModal(item){
+      currentItem=item;
+      const entrada=item.entradaISO?new Date(item.entradaISO):new Date();
+      const salida=new Date();
+
+      const min=Math.max(1,Math.ceil((salida-entrada)/60000));
+      const TARIFAS={auto:1800,camioneta:2000,moto:1300};
+      const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
+      let total=tarifaHora;
+      const restantes=Math.max(0,min-60);
+      const bloques30=Math.ceil(restantes/30);
+      total+=bloques30*(tarifaHora/2);
+      cobro=Math.round(total);
+
+      exitMeta={
+        placa:item.placa,
+        tipo:item.tipo,
+        notas:item.notas||"",
+        entradaISO:item.entradaISO||entrada.toISOString(),
+        salidaISO:salida.toISOString(),
+        totalMin:min,
+        totalCobrado:cobro,
+        duracionTexto:formatHM(min),
+        // 👉 importante para que el dashboard muestre el indicador
+        edited: (item.edited === true) || (item.entradaEditada === true)
+      };
+
+      exitTitle.textContent=item.placa.toUpperCase();
+      exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
+      exitAmount.textContent=`$${cobro}`;
+      paymentInput.value='';
+      changeOutput.textContent='Vuelto: $0';
+      exitModal.style.display='flex';
+    }
+
+    paymentInput.addEventListener('input',()=>{
+      const pago=parseFloat(paymentInput.value)||0;
+      const vuelto=pago-cobro;
+      changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;
+    });
+
+    confirmButton.addEventListener('click',async()=>{
+      if(!currentItem)return;
+      await removeEstacionado(currentItem.id, exitMeta);
+      exitModal.style.display='none';
+      toast('Salida confirmada');
+      currentItem=null;
+      exitMeta=null;
+    });
+    closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
+
+    /* =========================
+       === NUEVO: "Salidos hoy" desde Firebase (/salidas)
+       - Emoji por tipo
+       - Ingreso / Salida
+       - Tiempo total transcurrido
+       ========================= */
+
     function esDeHoy(ts){
       const d = new Date(ts);
       const hoy = new Date();
@@ -166,140 +404,45 @@
       const d = new Date(ts);
       return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     }
-
-    function renderSalidos(data){
-      const hoy = data.filter(x=>x.salidaISO && esDeHoy(x.salidaISO));
-      hoy.sort((a,b)=>new Date(b.salidaISO)-new Date(a.salidaISO));
-      salidosCount.textContent = hoy.length;
-      listaSalidos.innerHTML = hoy.map(v=>`
-        <li>
-          <div class="salidos-left">
-            <span class="salidos-placa">${v.placa || '—'}</span>
-            <span class="salidos-sub">Ingresó: ${v.entradaISO?hhmm(v.entradaISO):'—'}</span>
-          </div>
-          <div class="salidos-sub">Salió: ${v.salidaISO?hhmm(v.salidaISO):'—'}</div>
-        </li>
-      `).join('');
+    function diffHM(iniISO, finISO){
+      const ini = new Date(iniISO), fin = new Date(finISO);
+      const m = Math.max(1, Math.ceil((fin-ini)/60000));
+      const h = Math.floor(m/60), mm = m%60;
+      if(h<=0) return `${mm} min`;
+      if(mm<=0) return `${h} h`;
+      return `${h} h ${mm} min`;
     }
 
-    // ---- suscripción a /salidas ----
-    onValue(ref(db, 'salidas'), snap=>{
+    function renderSalidosHoy(items){
+      const hoy = items.filter(x=>x.salidaISO && esDeHoy(x.salidaISO));
+      // más recientes primero
+      hoy.sort((a,b)=> new Date(b.salidaISO) - new Date(a.salidaISO));
+
+      salidosCount.textContent = hoy.length;
+      listaSalidosHoy.innerHTML = hoy.map(v=>{
+        const emoji = v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
+        const tIn   = v.entradaISO ? hhmm(v.entradaISO) : '—';
+        const tOut  = v.salidaISO  ? hhmm(v.salidaISO)  : '—';
+        const dur   = (v.entradaISO && v.salidaISO) ? diffHM(v.entradaISO, v.salidaISO) : '—';
+        const placa = v.placa || v.patente || v.dominio || '—';
+        return `
+          <li>
+            <div class="history-left">
+              <span class="history-plate">${emoji} ${placa}</span>
+              <span class="history-sub">Ingresó: ${tIn} — Salió: ${tOut}</span>
+              <span class="history-sub">Tiempo total: ${dur}</span>
+            </div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    // Suscripción a /salidas
+    onValue(ref(db, 'salidas'), (snap)=>{
       const val = snap.val() || {};
       const arr = Object.values(val);
-      renderSalidos(arr);
+      renderSalidosHoy(arr);
     });
-
-    // ---- resto de tu lógica intacta ----
-    import { onEstacionados as onActivos } from './firebase.js';
-    const inputPatente=document.getElementById('placa');
-    const inputNotas=document.getElementById('notas');
-    const inputHora=document.getElementById('entryTime');
-    const editHourBtn=document.getElementById('editHourBtn');
-    const btnEntrada=document.getElementById('btn-entrada');
-    const lista=document.getElementById('listaEstacionados');
-    const countEl=document.getElementById('count');
-    const searchInput=document.getElementById('searchInput');
-    const clearBtn=document.getElementById('clearFilterBtn');
-    const exitModal=document.getElementById('exitModal');
-    const closeModal=document.getElementById('closeModal');
-    const exitTitle=document.getElementById('exitTitle');
-    const exitInfo=document.getElementById('exitInfo');
-    const exitAmount=document.getElementById('exitAmount');
-    const paymentInput=document.getElementById('paymentInput');
-    const changeOutput=document.getElementById('changeOutput');
-    const confirmButton=document.getElementById('confirmButton');
-
-    let tipoSeleccionado='auto', currentItem=null, cobro=0, exitMeta=null, horaEditada=false;
-    const autoBtn=document.getElementById('autoBtn');
-    const camionetaBtn=document.getElementById('camionetaBtn');
-    const motoBtn=document.getElementById('motoBtn');
-
-    document.querySelectorAll('[data-tipo]').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        document.querySelectorAll('[data-tipo]').forEach(x=>x.classList.remove('active'));
-        btn.classList.add('active');
-        tipoSeleccionado=btn.dataset.tipo;
-      });
-    });
-
-    function nowHHMM(){const d=new Date();return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});}
-    function updateEntryTime(){if(!horaEditada)inputHora.value=nowHHMM();}
-    updateEntryTime();setInterval(updateEntryTime,60000);
-
-    function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.className='toast',1800);}
-    function toggleClearBtn(){const hasText=(searchInput.value||'').trim().length>0;clearBtn.classList.toggle('active',hasText);}
-    searchInput.addEventListener('input',()=>{toggleClearBtn();render();});
-    clearBtn.addEventListener('click',()=>{searchInput.value='';toggleClearBtn();render();});
-    toggleClearBtn();
-
-    editHourBtn.addEventListener('click',()=>{
-      inputHora.readOnly=false;horaEditada=true;
-      const v=inputHora.value;
-      requestAnimationFrame(()=>{inputHora.focus();const len=v.length;if(inputHora.setSelectionRange)inputHora.setSelectionRange(len,len);});
-    });
-
-    function isoTodayFromHHMM(hhmm){
-      const[h,m]=(hhmm||'').split(':').map(x=>parseInt(x,10));
-      const d=new Date();if(!isNaN(h))d.setHours(h);if(!isNaN(m))d.setMinutes(m);d.setSeconds(0);d.setMilliseconds(0);
-      return d.toISOString();
-    }
-
-    btnEntrada.addEventListener('click',async(e)=>{
-      e.preventDefault();
-      const placa=(inputPatente.value||'').trim().toUpperCase();
-      if(!placa){toast('Ingresá la patente');inputPatente.focus();return;}
-      let entradaISO,horaTexto;
-      if(horaEditada){horaTexto=inputHora.value;entradaISO=isoTodayFromHHMM(horaTexto);}else{const d=new Date();entradaISO=d.toISOString();horaTexto=nowHHMM();}
-      await addEntrada({placa,tipo:tipoSeleccionado,notas:inputNotas.value||'',entradaISO,horaTexto,edited:!!horaEditada});
-      inputPatente.value='';inputNotas.value='';inputPatente.focus();tipoSeleccionado='auto';
-      autoBtn.classList.add('active');camionetaBtn.classList.remove('active');motoBtn.classList.remove('active');
-      inputHora.readOnly=true;horaEditada=false;updateEntryTime();toast('Vehículo ingresado');
-    });
-
-    inputPatente.addEventListener('keypress',e=>{if(e.key==='Enter'){e.preventDefault();btnEntrada.click();}});
-
-    let cache=[];
-    onActivos(items=>{cache=items||[];render();});
-
-    function render(){
-      const term=(searchInput.value||'').trim().toUpperCase();
-      const filtered=term?cache.filter(v=>(v.placa||'').toUpperCase().includes(term)):cache;
-      lista.innerHTML='';countEl.textContent=cache.length;
-      filtered.forEach(v=>{
-        const li=document.createElement('li');
-        const emoji=v.tipo==='camioneta'?'🚐':(v.tipo==='moto'?'🏍️':'🚗');
-        const hora=v.entradaISO?new Date(v.entradaISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):(v.horaTexto||'');
-        const left=document.createElement('div');
-        const plate=document.createElement('span');plate.className='plate';plate.textContent=`${emoji} ${v.placa}`;
-        const timeWrap=document.createElement('span');timeWrap.className='time';
-        timeWrap.innerHTML=`${hora}${v.edited?' <span class="edited-badge">EDITADO</span>':''}`;
-        left.appendChild(plate);left.appendChild(timeWrap);
-        if(v.notas){const n=document.createElement('span');n.className='note';n.textContent=v.notas;left.appendChild(n);}
-        const del=document.createElement('button');del.className='delete-btn';del.textContent='SALIDA';del.addEventListener('click',()=>openExitModal(v));
-        li.appendChild(left);li.appendChild(del);lista.appendChild(li);
-      });
-      const dl=document.getElementById('placaSuggestions');
-      dl.innerHTML='';[...new Set(cache.map(x=>x.placa))].slice(0,5).forEach(p=>{const opt=document.createElement('option');opt.value=p;dl.appendChild(opt);});
-    }
-
-    function formatHM(totalMin){const h=Math.floor(totalMin/60);const m=totalMin%60;if(h<=0)return`${m} min`;if(m<=0)return`${h} h`;return`${h} h ${m} min`;}
-    function openExitModal(item){
-      currentItem=item;
-      const entrada=item.entradaISO?new Date(item.entradaISO):new Date();const salida=new Date();
-      const min=Math.max(1,Math.ceil((salida-entrada)/60000));
-      const TARIFAS={auto:1800,camioneta:2000,moto:1300};
-      const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
-      let total=tarifaHora;const restantes=Math.max(0,min-60);const bloques30=Math.ceil(restantes/30);
-      total+=bloques30*(tarifaHora/2);cobro=Math.round(total);
-      exitMeta={placa:item.placa,tipo:item.tipo,notas:item.notas||"",entradaISO:item.entradaISO||entrada.toISOString(),salidaISO:salida.toISOString(),totalMin:min,totalCobrado:cobro,duracionTexto:formatHM(min),edited:(item.edited===true)||(item.entradaEditada===true)};
-      exitTitle.textContent=item.placa.toUpperCase();
-      exitInfo.innerHTML=`Entrada: ${entrada.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Salida: ${salida.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br>Tiempo: ${exitMeta.duracionTexto}`;
-      exitAmount.textContent=`$${cobro}`;paymentInput.value='';changeOutput.textContent='Vuelto: $0';exitModal.style.display='flex';
-    }
-
-    paymentInput.addEventListener('input',()=>{const pago=parseFloat(paymentInput.value)||0;const vuelto=pago-cobro;changeOutput.textContent=`Vuelto: ${vuelto>=0?'$'+vuelto:'Pago insuficiente'}`;});
-    confirmButton.addEventListener('click',async()=>{if(!currentItem)return;await removeEstacionado(currentItem.id,exitMeta);exitModal.style.display='none';toast('Salida confirmada');currentItem=null;exitMeta=null;});
-    closeModal.addEventListener('click',()=>{exitModal.style.display='none';currentItem=null;});
   </script>
 </body>
 </html>
