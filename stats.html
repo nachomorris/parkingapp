@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Estadísticas — Horarios Populares & Recaudación</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box}
+    body{
+      font-family:'Roboto',sans-serif;
+      background:#f5f7fa;
+      color:#223;
+      margin:0;
+      padding:12px;
+    }
+    .wrap{
+      max-width:1000px;
+      margin:0 auto;
+      background:#fff;
+      border:1px solid #e6eaf0;
+      border-radius:16px;
+      box-shadow:0 8px 24px rgba(18,33,61,.06);
+      overflow:hidden;
+    }
+    header{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      padding:16px 18px;
+      border-bottom:1px solid #eef2f7;
+      background:#fafcff;
+    }
+    h1{font-size:1.25rem;margin:0}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    select,input[type="month"]{
+      padding:8px 10px;border:1px solid #d7dde3;border-radius:10px;background:#fff;
+      font-weight:700;color:#415466;cursor:pointer
+    }
+    .badge-live{display:inline-block;background:#e83f3f;color:#fff;font-weight:800;letter-spacing:.02em;padding:4px 8px;border-radius:8px;margin-right:8px;font-size:.8rem}
+    .muted{color:#6c7a8a;font-weight:700}
+    main{padding:16px 18px}
+
+    /* Chart horarios (8–22) */
+    .chart{
+      display:grid;
+      grid-template-columns:repeat(15,1fr); /* 8..22 inclusive */
+      gap:6px;
+      align-items:end;
+      height:220px;
+      padding:18px 8px 10px;
+      border-bottom:1px dashed #e6eaf0;
+    }
+    .bar{
+      position:relative;
+      background:#5b8aa6;
+      border-radius:8px 8px 0 0;
+      height:0;
+      transition:height .4s;
+    }
+    .bar.live{outline:2px solid #f16363;background:#c65c5c}
+    .bar:hover::after{
+      content:attr(data-tip);
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:100%;
+      margin-bottom:8px;
+      background:#1f2a36;
+      color:#fff;
+      padding:6px 8px;
+      border-radius:6px;
+      font-size:.75rem;
+      white-space:nowrap;
+    }
+    .xlabels{
+      display:grid;
+      grid-template-columns:repeat(15,1fr);
+      gap:6px;
+      margin-top:8px;
+      font-size:.78rem;
+      color:#6c7a8a;
+    }
+    .xlabels span{justify-self:center}
+
+    /* KPIs reutilizables */
+    .kpis{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+      margin-top:16px;
+    }
+    .kpi{
+      border:1px solid #eef2f7;
+      border-left:4px solid #2f7ad6;
+      border-radius:12px;
+      background:#fbfdff;
+      padding:12px;
+    }
+    .kpi h4{margin:0 0 6px 0;color:#6c7a8a;font-size:.85rem;text-transform:uppercase;letter-spacing:.02em}
+    .kpi .v{font-weight:800;font-size:1.25rem;color:#1f2a36}
+
+    /* Recaudación mensual */
+    #revChart{position:relative;border:1px dashed #e6eaf0;border-radius:12px;padding:14px 10px}
+    #revBars{display:grid;gap:6px;align-items:end;height:240px}
+    #revBars .bar{background:#5b8aa6;border-radius:8px 8px 0 0;transition:height .3s}
+    #revX{display:grid;gap:6px;margin-top:8px;color:#6c7a8a;font-size:.78rem}
+    #revLine{position:absolute;left:10px;top:10px;pointer-events:none}
+
+    footer{padding:14px 18px;color:#6c7a8a;font-size:.85rem}
+    @media (max-width:900px){ .kpis{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Horarios de mayor concurrencia</h1>
+      <div class="controls">
+        <label class="muted">Día</label>
+        <select id="daySelect">
+          <option value="0">domingo</option>
+          <option value="1">lunes</option>
+          <option value="2">martes</option>
+          <option value="3">miércoles</option>
+          <option value="4">jueves</option>
+          <option value="5">viernes</option>
+          <option value="6">sábado</option>
+        </select>
+        <label class="muted">Rango</label>
+        <select id="rangeSelect">
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+        </select>
+      </div>
+    </header>
+
+    <main>
+      <!-- Live status -->
+      <div style="margin-bottom:8px;">
+        <span class="badge-live">EN TIEMPO REAL</span>
+        <span id="liveText" class="muted">Calculando…</span>
+      </div>
+
+      <!-- Chart horarios -->
+      <div id="chart" class="chart" aria-label="Promedio de ocupación por hora"></div>
+      <div class="xlabels" id="xlabels"></div>
+
+      <section class="kpis">
+        <div class="kpi"><h4>Pico promedio del día</h4><div class="v" id="kpiPeak">–</div></div>
+        <div class="kpi"><h4>Ocupación ahora</h4><div class="v" id="kpiNow">–</div></div>
+        <div class="kpi"><h4>Vehículos hoy</h4><div class="v" id="kpiToday">–</div></div>
+      </section>
+
+      <!-- ================= Recaudación mensual ================= -->
+      <section style="margin-top:26px">
+        <h2 style="margin:0 0 10px 0;font-size:1.05rem;color:#1f2a36">Recaudación por día del mes</h2>
+        <div class="controls" style="margin-bottom:10px">
+          <label class="muted">Mes</label>
+          <input id="revMonth" type="month">
+        </div>
+
+        <div id="revKpis" class="kpis" style="margin:8px 0 12px 0">
+          <div class="kpi"><h4>Total del mes</h4><div class="v" id="revTotal">–</div></div>
+          <div class="kpi"><h4>Promedio diario</h4><div class="v" id="revAvg">–</div></div>
+          <div class="kpi"><h4>Día más alto</h4><div class="v" id="revPeak">–</div></div>
+        </div>
+
+        <div id="revChart">
+          <div id="revBars"></div>
+          <canvas id="revLine" width="1200" height="260"></canvas>
+          <div id="revX"></div>
+        </div>
+      </section>
+      <!-- ======================================================= -->
+
+    </main>
+
+    <footer>
+      Horarios promediados entre <b>8 y 22 hs</b>. Basado en entradas y salidas históricas (n = <span id="sampleSize">0</span> días del día seleccionado).
+    </footer>
+  </div>
+
+  <script type="module">
+    import { app } from './firebase.js';
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+    import { onEstacionados } from './firebase.js';
+    const db = getDatabase(app);
+
+    /* ---------- UI refs (horarios) ---------- */
+    const daySelect   = document.getElementById('daySelect');
+    const rangeSelect = document.getElementById('rangeSelect');
+    const chartEl     = document.getElementById('chart');
+    const xlabelsEl   = document.getElementById('xlabels');
+    const liveText    = document.getElementById('liveText');
+    const kpiPeak     = document.getElementById('kpiPeak');
+    const kpiNow      = document.getElementById('kpiNow');
+    const kpiToday    = document.getElementById('kpiToday');
+    const sampleSize  = document.getElementById('sampleSize');
+
+    /* ---------- UI refs (recaudación) ---------- */
+    const revMonth    = document.getElementById('revMonth');
+    const revBarsWrap = document.getElementById('revBars');
+    const revX        = document.getElementById('revX');
+    const revLine     = document.getElementById('revLine');
+    const revTotalEl  = document.getElementById('revTotal');
+    const revAvgEl    = document.getElementById('revAvg');
+    const revPeakEl   = document.getElementById('revPeak');
+
+    /* ---------- Helpers comunes ---------- */
+    const HSTART = 8, HEND = 22; // inclusivo
+    const HRS = Array.from({length:(HEND - HSTART + 1)}, (_,i)=> i + HSTART);
+
+    function labelForHour(h){
+      if (h === 0) return "12 a. m.";
+      if (h < 12)  return h + " a. m.";
+      if (h === 12) return "12 p. m.";
+      return (h-12) + " p. m.";
+    }
+    function overlapMinutes(aStart,aEnd,bStart,bEnd){
+      const start = Math.max(aStart,bStart), end = Math.min(aEnd,bEnd);
+      return Math.max(0, Math.ceil((end - start)/60000));
+    }
+    function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+    function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
+    const fmtMoney = n => '$' + (Math.round(n)||0).toLocaleString('es-AR');
+
+    // tarifas fallback para calcular total si no viene totalCobrado
+    const TARIFAS = { auto:1800, camioneta:2000, moto:1300 };
+    function computeCharge(x){
+      if (typeof x.totalCobrado === 'number') return x.totalCobrado;
+      try{
+        const t = TARIFAS[x.tipo] ?? TARIFAS.auto;
+        const a = new Date(x.entradaISO), b = new Date(x.salidaISO);
+        if (!a || !b || isNaN(a) || isNaN(b)) return 0;
+        const min = Math.max(1, Math.ceil((b - a)/60000));
+        let tot = t;
+        const resto = Math.max(0, min - 60);
+        tot += Math.ceil(resto/30) * (t/2);
+        return Math.round(tot);
+      }catch{ return 0; }
+    }
+    function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); } // m: 0-11
+
+    /* ---------- Estado ---------- */
+    let historial = [];         // /salidas
+    let estacionadosAhora = 0;  // /estacionados (live)
+
+    // Live estacionados
+    onEstacionados(items => {
+      estacionadosAhora = (items||[]).length;
+      renderNow(); // actualiza KPI en tiempo real
+    });
+
+    // Histórico de salidas
+    onValue(ref(db,'salidas'), snap => {
+      const val = snap.val() || {};
+      historial = Object.values(val).filter(x=>x.entradaISO && x.salidaISO);
+      renderAll();     // horarios populares
+      renderRevenue(); // recaudación mensual
+    });
+
+    // Valores iniciales
+    daySelect.value = String(new Date().getDay());
+    const now = new Date();
+    const defaultMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    revMonth.value = defaultMonth;
+
+    // Eventos UI
+    daySelect.addEventListener('change', renderAll);
+    rangeSelect.addEventListener('change', renderAll);
+    revMonth.addEventListener('change', renderRevenue);
+
+    // Etiquetas eje X (horarios)
+    xlabelsEl.innerHTML = HRS.map(h=>`<span>${labelForHour(h)}</span>`).join('');
+
+    /* ---------- Render: Horarios populares ---------- */
+    function renderAll(){
+      const day = parseInt(daySelect.value,10);
+      const daysBack = parseInt(rangeSelect.value,10);
+      const today = new Date();
+      const from = new Date(); from.setDate(today.getDate()-daysBack+1); from.setHours(0,0,0,0);
+
+      const rows = historial.filter(r=>{
+        const end = new Date(r.salidaISO);
+        return end >= from && end <= today;
+      });
+
+      let sampleDays = 0;
+      for(let d = startOfDay(from); d <= today; d = new Date(d.getTime()+86400000)){
+        if (d.getDay() === day) sampleDays++;
+      }
+      sampleSize.textContent = sampleDays;
+
+      const minutesPerHour = new Array(24).fill(0);
+      rows.forEach(r=>{
+        const inD  = new Date(r.entradaISO);
+        const outD = new Date(r.salidaISO);
+        for(let d = startOfDay(inD); d <= endOfDay(outD); d = new Date(d.getTime()+86400000)){
+          if (d.getDay() !== day) continue;
+          const dayStart = startOfDay(d).getTime();
+          const dayEnd   = endOfDay(d).getTime();
+          const segStart = Math.max(inD.getTime(), dayStart);
+          const segEnd   = Math.min(outD.getTime(), dayEnd);
+          if (segEnd <= segStart) continue;
+
+          for(let h=HSTART; h<=HEND; h++){
+            const hStart = dayStart + h*3600000;
+            const hEnd   = hStart + 3600000;
+            const mins = overlapMinutes(segStart, segEnd, hStart, hEnd);
+            if (mins>0) minutesPerHour[h] += mins;
+          }
+        }
+      });
+
+      const avgOcc = HRS.map(h => sampleDays ? minutesPerHour[h] / (60*sampleDays) : 0);
+
+      renderChart(avgOcc);
+      renderKPIs(avgOcc);
+      renderNow(avgOcc);
+    }
+
+    function renderChart(values){
+      const max = Math.max(1, ...values);
+      chartEl.innerHTML = '';
+      values.forEach((v,i)=>{
+        const h = HRS[i];
+        const pct = (v/max)*100;
+        const div = document.createElement('div');
+        div.className = 'bar';
+        if (h === new Date().getHours()) div.classList.add('live');
+        div.style.height = (pct*0.94 + 2) + '%';
+        div.dataset.tip = `${labelForHour(h)} · ${v.toFixed(1)} veh`;
+        chartEl.appendChild(div);
+      });
+    }
+
+    function renderKPIs(values=[]){
+      const peakVal = Math.max(0, ...values);
+      const peakIdx = values.findIndex(v=>v===peakVal);
+      const peakHr  = peakIdx>=0 ? HRS[peakIdx] : null;
+      kpiPeak.textContent = peakHr!=null ? `${labelForHour(peakHr)} · ${peakVal.toFixed(1)} veh` : '–';
+      kpiToday.textContent = countSalidasHoy();
+    }
+
+    function countSalidasHoy(){
+      const today = new Date();
+      const s0 = startOfDay(today).getTime(), s1 = endOfDay(today).getTime();
+      return historial.filter(x=>{
+        const t = new Date(x.salidaISO).getTime();
+        return t>=s0 && t<=s1;
+      }).length;
+    }
+
+    function renderNow(values=[]){
+      kpiNow.textContent = `${estacionadosAhora} veh`;
+      const peak = values.length ? Math.max(1, ...values) : Math.max(1, estacionadosAhora);
+      const ratio = estacionadosAhora / peak;
+      const txt = ratio < 0.4 ? 'Poco concurrido' : ratio < 0.7 ? 'Moderado' : 'Muy concurrido';
+      liveText.textContent = txt;
+      [...chartEl.children].forEach((b,i)=>{
+        const h = HRS[i];
+        b.classList.toggle('live', h === new Date().getHours());
+      });
+    }
+
+    /* ---------- Render: Recaudación mensual ---------- */
+    function renderRevenue(){
+      if (!historial) return;
+
+      const [yy,mm] = revMonth.value.split('-').map(n=>parseInt(n,10)); // mm: 1..12
+      const year = yy, monthIdx = mm-1; // 0..11
+      const nDays = daysInMonth(year, monthIdx);
+      const d0 = new Date(year, monthIdx, 1, 0,0,0,0);
+      const d1 = new Date(year, monthIdx, nDays, 23,59,59,999);
+
+      const byDay = Array.from({length:nDays}, ()=>0);
+
+      const rows = (historial||[]).filter(r=>{
+        const t = new Date(r.salidaISO);
+        return r.salidaISO && t >= d0 && t <= d1;
+      });
+
+      rows.forEach(r=>{
+        const t = new Date(r.salidaISO);
+        const idx = t.getDate()-1;
+        byDay[idx] += computeCharge(r);
+      });
+
+      const total = byDay.reduce((a,b)=>a+b,0);
+      const peak  = Math.max(0, ...byDay);
+      const peakIdx = byDay.findIndex(v=>v===peak);
+      const usedDays = byDay.filter(v=>v>0).length || nDays;
+
+      revTotalEl.textContent = fmtMoney(total);
+      revAvgEl.textContent   = fmtMoney(total / usedDays);
+      revPeakEl.textContent  = peak ? `${String(peakIdx+1).padStart(2,'0')}/${String(mm).padStart(2,'0')} · ${fmtMoney(peak)}` : '–';
+
+      // Grid dinámico según días del mes
+      revBarsWrap.style.gridTemplateColumns = `repeat(${nDays}, 1fr)`;
+      revX.style.gridTemplateColumns        = `repeat(${nDays}, 1fr)`;
+
+      // Dibujar barras
+      const max = Math.max(1, peak);
+      revBarsWrap.innerHTML = '';
+      revX.innerHTML = '';
+      byDay.forEach((v,i)=>{
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.height = ((v/max)*100*0.92 + 2) + '%';
+        bar.title = `Día ${i+1} · ${fmtMoney(v)}`;
+        revBarsWrap.appendChild(bar);
+
+        const lab = document.createElement('span');
+        lab.textContent = (i+1);
+        lab.style.justifySelf = 'center';
+        revX.appendChild(lab);
+      });
+
+      // Curva acumulada sobre canvas
+      const W = revLine.width, H = revLine.height;
+      const padL = 6, padR = 6, padT = 10, padB = 20;
+      const ctx = revLine.getContext('2d');
+      ctx.clearRect(0,0,W,H);
+
+      const xStep = (W - padL - padR) / Math.max(1,(nDays-1));
+      const yScale = (H - padT - padB) / Math.max(1, total);
+      ctx.beginPath();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#2f7ad6';
+
+      let acc = 0;
+      byDay.forEach((v,i)=>{
+        acc += v;
+        const x = padL + i*xStep;
+        const y = H - padB - acc*yScale;
+        if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+    }
+  </script>
+</body>
+</html>
