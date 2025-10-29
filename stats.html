@@ -101,15 +101,31 @@
     .kpi h4{margin:0 0 6px 0;color:#6c7a8a;font-size:.85rem;text-transform:uppercase;letter-spacing:.02em}
     .kpi .v{font-weight:800;font-size:1.25rem;color:#1f2a36}
 
-    /* Recaudación mensual */
+    /* Recaudación mensual (barras + línea) */
     #revChart{position:relative;border:1px dashed #e6eaf0;border-radius:12px;padding:14px 10px}
     #revBars{display:grid;gap:6px;align-items:end;height:240px}
     #revBars .bar{background:#5b8aa6;border-radius:8px 8px 0 0;transition:height .3s}
     #revX{display:grid;gap:6px;margin-top:8px;color:#6c7a8a;font-size:.78rem}
     #revLine{position:absolute;left:10px;top:10px;pointer-events:none}
 
+    /* Calendario (heatmap) */
+    .cal-wrap{border:1px dashed #e6eaf0;border-radius:12px;padding:12px}
+    .cal-head{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;color:#6c7a8a;font-weight:700;font-size:.8rem}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .cal-cell{
+      min-height:70px;border:1px solid #e9eef4;border-radius:10px;background:#f9fbff;position:relative;padding:8px;display:flex;flex-direction:column;justify-content:flex-start
+    }
+    .cal-cell .d{font-size:.8rem;font-weight:800;color:#324253}
+    .cal-cell .m{margin-top:auto;font-size:.8rem;font-weight:800;color:#1f2a36}
+    .cal-empty{background:#fafbfe;border:1px dashed #eef2f7}
+    .cal-legend{display:flex;align-items:center;gap:6px;margin-top:10px;color:#6c7a8a;font-size:.8rem}
+    .sw{width:18px;height:12px;border-radius:4px;border:1px solid #dbe4ef}
     footer{padding:14px 18px;color:#6c7a8a;font-size:.85rem}
-    @media (max-width:900px){ .kpis{grid-template-columns:1fr} }
+
+    @media (max-width:900px){
+      .kpis{grid-template-columns:1fr}
+      .cal-cell{min-height:56px}
+    }
   </style>
 </head>
 <body>
@@ -173,6 +189,28 @@
           <div id="revX"></div>
         </div>
       </section>
+
+      <!-- ================= Calendario (heatmap) ================= -->
+      <section style="margin-top:20px">
+        <h2 style="margin:0 0 10px 0;font-size:1.05rem;color:#1f2a36">Calendario del mes (recaudación por día)</h2>
+
+        <div class="cal-wrap">
+          <div class="cal-head">
+            <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
+          </div>
+          <div id="revCal" class="cal-grid"></div>
+
+          <div class="cal-legend">
+            <span>Menor</span>
+            <span class="sw" style="background:#eef5ff"></span>
+            <span class="sw" style="background:#cfe2ff"></span>
+            <span class="sw" style="background:#9fc4ff"></span>
+            <span class="sw" style="background:#6aa5ff"></span>
+            <span class="sw" style="background:#3b86ff"></span>
+            <span>Mayor</span>
+          </div>
+        </div>
+      </section>
       <!-- ======================================================= -->
 
     </main>
@@ -207,9 +245,10 @@
     const revTotalEl  = document.getElementById('revTotal');
     const revAvgEl    = document.getElementById('revAvg');
     const revPeakEl   = document.getElementById('revPeak');
+    const revCal      = document.getElementById('revCal');
 
-    /* ---------- Helpers comunes ---------- */
-    const HSTART = 8, HEND = 22; // inclusivo
+    /* ---------- Helpers ---------- */
+    const HSTART = 8, HEND = 22; // inclusive
     const HRS = Array.from({length:(HEND - HSTART + 1)}, (_,i)=> i + HSTART);
 
     function labelForHour(h){
@@ -225,8 +264,6 @@
     function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
     function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
     const fmtMoney = n => '$' + (Math.round(n)||0).toLocaleString('es-AR');
-
-    // tarifas fallback para calcular total si no viene totalCobrado
     const TARIFAS = { auto:1800, camioneta:2000, moto:1300 };
     function computeCharge(x){
       if (typeof x.totalCobrado === 'number') return x.totalCobrado;
@@ -242,40 +279,39 @@
       }catch{ return 0; }
     }
     function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); } // m: 0-11
+    function firstWeekdayOfMonth(y,m){ return new Date(y,m,1).getDay(); } // 0: dom
 
     /* ---------- Estado ---------- */
     let historial = [];         // /salidas
     let estacionadosAhora = 0;  // /estacionados (live)
 
-    // Live estacionados
     onEstacionados(items => {
       estacionadosAhora = (items||[]).length;
-      renderNow(); // actualiza KPI en tiempo real
+      renderNow(); // KPI live
     });
 
-    // Histórico de salidas
     onValue(ref(db,'salidas'), snap => {
       const val = snap.val() || {};
       historial = Object.values(val).filter(x=>x.entradaISO && x.salidaISO);
-      renderAll();     // horarios populares
-      renderRevenue(); // recaudación mensual
+      renderAll();
+      renderRevenue();
     });
 
-    // Valores iniciales
+    // valores iniciales
     daySelect.value = String(new Date().getDay());
     const now = new Date();
     const defaultMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     revMonth.value = defaultMonth;
 
-    // Eventos UI
+    // eventos UI
     daySelect.addEventListener('change', renderAll);
     rangeSelect.addEventListener('change', renderAll);
     revMonth.addEventListener('change', renderRevenue);
 
-    // Etiquetas eje X (horarios)
+    // etiquetas de horas
     xlabelsEl.innerHTML = HRS.map(h=>`<span>${labelForHour(h)}</span>`).join('');
 
-    /* ---------- Render: Horarios populares ---------- */
+    /* ---------- Horarios populares ---------- */
     function renderAll(){
       const day = parseInt(daySelect.value,10);
       const daysBack = parseInt(rangeSelect.value,10);
@@ -315,7 +351,6 @@
       });
 
       const avgOcc = HRS.map(h => sampleDays ? minutesPerHour[h] / (60*sampleDays) : 0);
-
       renderChart(avgOcc);
       renderKPIs(avgOcc);
       renderNow(avgOcc);
@@ -365,7 +400,7 @@
       });
     }
 
-    /* ---------- Render: Recaudación mensual ---------- */
+    /* ---------- Recaudación mensual (barras + línea + calendario) ---------- */
     function renderRevenue(){
       if (!historial) return;
 
@@ -388,6 +423,14 @@
         byDay[idx] += computeCharge(r);
       });
 
+      // KPIs + barras + curva
+      renderRevenueBars(byDay, year, monthIdx);
+      // Calendario heatmap
+      renderRevenueCalendar(byDay, year, monthIdx);
+    }
+
+    function renderRevenueBars(byDay, year, monthIdx){
+      const nDays = byDay.length;
       const total = byDay.reduce((a,b)=>a+b,0);
       const peak  = Math.max(0, ...byDay);
       const peakIdx = byDay.findIndex(v=>v===peak);
@@ -395,13 +438,11 @@
 
       revTotalEl.textContent = fmtMoney(total);
       revAvgEl.textContent   = fmtMoney(total / usedDays);
-      revPeakEl.textContent  = peak ? `${String(peakIdx+1).padStart(2,'0')}/${String(mm).padStart(2,'0')} · ${fmtMoney(peak)}` : '–';
+      revPeakEl.textContent  = peak ? `${String(peakIdx+1).padStart(2,'0')}/${String(monthIdx+1).padStart(2,'0')} · ${fmtMoney(peak)}` : '–';
 
-      // Grid dinámico según días del mes
       revBarsWrap.style.gridTemplateColumns = `repeat(${nDays}, 1fr)`;
       revX.style.gridTemplateColumns        = `repeat(${nDays}, 1fr)`;
 
-      // Dibujar barras
       const max = Math.max(1, peak);
       revBarsWrap.innerHTML = '';
       revX.innerHTML = '';
@@ -418,7 +459,7 @@
         revX.appendChild(lab);
       });
 
-      // Curva acumulada sobre canvas
+      // Curva acumulada
       const W = revLine.width, H = revLine.height;
       const padL = 6, padR = 6, padT = 10, padB = 20;
       const ctx = revLine.getContext('2d');
@@ -438,6 +479,63 @@
         if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
       });
       ctx.stroke();
+    }
+
+    function renderRevenueCalendar(byDay, year, monthIdx){
+      // Construye una grilla 7xN empezando en el domingo
+      const nDays = byDay.length;
+      const firstW = firstWeekdayOfMonth(year, monthIdx); // 0..6
+      const weeks = Math.ceil((firstW + nDays) / 7);
+
+      // escala de color por pico del mes
+      const peak = Math.max(0, ...byDay);
+      const max = Math.max(1, peak);
+
+      revCal.innerHTML = '';
+      revCal.style.gridTemplateRows = `repeat(${weeks}, 1fr)`;
+
+      // Celdas vacías previas
+      for (let i=0;i<firstW;i++){
+        const div = document.createElement('div');
+        div.className = 'cal-cell cal-empty';
+        revCal.appendChild(div);
+      }
+
+      // Celdas del mes
+      for (let d=1; d<=nDays; d++){
+        const val = byDay[d-1];
+        const intensity = val>0 ? (val/max) : 0; // 0..1
+        // gradiente azul de muy claro a intenso
+        // usamos HSL azul 215°, variando lightness 92% -> 55%
+        const light = 92 - Math.round(intensity*37); // 92..55
+        const bg = val>0 ? `hsl(215 90% ${light}%)` : '#f9fbff';
+
+        const cell = document.createElement('div');
+        cell.className = 'cal-cell';
+        cell.style.background = bg;
+        cell.title = `Día ${d} · ${fmtMoney(val)}`;
+
+        const dayEl = document.createElement('div');
+        dayEl.className = 'd';
+        dayEl.textContent = d;
+
+        const moneyEl = document.createElement('div');
+        moneyEl.className = 'm';
+        moneyEl.textContent = val ? fmtMoney(val) : '—';
+
+        cell.appendChild(dayEl);
+        cell.appendChild(moneyEl);
+        revCal.appendChild(cell);
+      }
+
+      // Celdas vacías finales para completar semana
+      const totalCells = firstW + nDays;
+      const remaining = (7 - (totalCells % 7)) % 7;
+      for (let i=0;i<remaining;i++){
+        const div = document.createElement('div');
+        div.className = 'cal-cell cal-empty';
+        revCal.appendChild(div);
+      }
     }
   </script>
 </body>
