@@ -399,13 +399,13 @@
       const salida=new Date();
 
       const min=Math.max(1,Math.ceil((salida-entrada)/60000));
-      const TARIFAS={auto:1800,camioneta:2000,moto:1300};
-      const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
-      let total=tarifaHora;
-      const restantes=Math.max(0,min-60);
-      const bloques30=Math.ceil(restantes/30);
-      total+=bloques30*(tarifaHora/2);
-      cobro=Math.round(total);
+const TARIFAS={auto:2000,camioneta:2500,moto:1500};
+const tarifaHora=TARIFAS[item.tipo]??TARIFAS.auto;
+let total=tarifaHora;
+const restantes=Math.max(0,min-60);
+const bloques30=Math.ceil(restantes/30);
+total+=bloques30*(tarifaHora/2);
+cobro=Math.round(total);
 
       exitMeta={
         placa:item.placa,
